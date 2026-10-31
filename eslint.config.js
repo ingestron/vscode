@@ -16,6 +16,28 @@ export default tseslint.config(
   },
   ...tseslint.configs.recommended,
   {
+    // Packages meet only at their entry points: no deep imports into an
+    // Ingestron package, and no relative path out of this repository's folders.
+    files: ["**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: "^@ingestron/[^/]+/.+",
+              message: "Import an Ingestron package by its entry point, not its files.",
+            },
+            {
+              regex: "^(\\.\\./){2,}",
+              message: "Stay inside this package; use another package by its name.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["**/*.ts"],
     plugins: { jsdoc },
     rules: {

@@ -5,11 +5,14 @@ knows your project, hover that explains where each setting came from, previews
 of the generated files, and the Plan, Apply, Check and New project commands, for
 Ingestron projects.
 
-User documentation lives in the docs site (`apps/docs`), under Tools → VS Code.
+Documentation: [docs.ingestron.io](https://docs.ingestron.io/docs/tools/vscode).
 
 ## Install
 
+Build the extension and install it (Node 22.13 or later, pnpm 10):
+
 ```sh
+pnpm install
 pnpm package
 code --install-extension ingestron.vsix
 ```
@@ -22,10 +25,11 @@ pnpm validate          # format, licences, lint, types, bundle, unit tests
 pnpm test:integration  # in a downloaded VS Code
 ```
 
-The features in `src/features/` are plain functions over a project's files and
-are tested without VS Code; `src/vscode/` registers them. The bundle is
-`dist/extension.cjs`; `scripts/build.mjs` copies the schemas, SQL templates and
-built-in project templates beside it, from the installed packages.
+The editor features (problems, completion, hover, fixes) are plain functions in
+[`@ingestron/authoring`](https://www.npmjs.com/package/@ingestron/authoring),
+tested without VS Code; `src/vscode/` registers them with VS Code. The bundle
+is `dist/extension.cjs`; `scripts/build.mjs` copies the schemas, SQL templates,
+ADF recipes and project templates beside it, from the installed packages.
 
 ## Privacy
 
