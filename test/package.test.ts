@@ -23,7 +23,14 @@ describe("extension package", () => {
 
   it("names its repository and contacts", () => {
     const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
-    expect(manifest.repository?.url).toBe("git+https://github.com/ingestron/ingestron.git");
-    expect(manifest.bugs?.email).toBe("hello@ingestron.io");
+    expect(manifest.repository).toEqual({
+      type: "git",
+      url: "git+https://github.com/ingestron/vscode.git",
+    });
+    expect(manifest.bugs).toEqual({
+      url: "https://github.com/ingestron/vscode/issues",
+      email: "hello@ingestron.io",
+    });
+    expect(manifest.homepage).toBe("https://docs.ingestron.io");
   });
 });
