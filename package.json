@@ -2,19 +2,18 @@
   "name": "ingestron-vscode",
   "displayName": "Ingestron",
   "description": "Problems, navigation, completion, setting explanations and generated-file previews for Ingestron projects.",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "publisher": "ingestron",
   "private": true,
   "license": "Apache-2.0",
   "author": "IntentLabs <hello@ingestron.io>",
-  "homepage": "https://ingestron.com",
+  "homepage": "https://docs.ingestron.io",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ingestron/ingestron.git",
-    "directory": "apps/vscode"
+    "url": "git+https://github.com/ingestron/vscode.git"
   },
   "bugs": {
-    "url": "https://github.com/ingestron/ingestron/issues",
+    "url": "https://github.com/ingestron/vscode/issues",
     "email": "hello@ingestron.io"
   },
   "type": "module",

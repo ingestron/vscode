@@ -2,7 +2,8 @@
 // (never the user's own), light theme. Every shot is cropped to the same
 // width from the editor's left edge and scaled to the same size, so all of
 // them show at one scale in the docs. Run `pnpm test:integration` once first
-// to download VS Code.
+// to download VS Code. `pnpm screenshots <folder>` writes them to <folder>
+// (default `.tmp/screenshots`); the docs keep them in `public/images/vscode`.
 import { execFileSync } from "node:child_process";
 import {
   cpSync,
@@ -14,12 +15,12 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { _electron as electron } from "playwright-core";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const out = join(root, "../docs/public/images/vscode");
+const out = resolve(process.argv[2] ?? join(root, ".tmp/screenshots"));
 const installs = join(root, ".vscode-test");
 const application = join(
   installs,
