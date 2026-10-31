@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+.tmp/
+*.tsbuildinfo
+build/
+.DS_Store
+.vscode-test/
+schemas/
+templates/
+project-templates/
+*.vsix
+THIRD_PARTY_NOTICES
+recipes/

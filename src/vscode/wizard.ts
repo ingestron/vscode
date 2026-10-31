@@ -1,0 +1,127 @@
+// Ingestron: New project. The init questions as pickers and input boxes;
+// then the CLI's own `init` with every answer as a flag, and an offer to open
+// the new folder when it is outside the workspace.
+import { join } from "node:path";
+import { nameProblem, projectId, run, type Template } from "@ingestron/cli";
+import * as vscode from "vscode";
+import { chooseProject, type ProjectChoice } from "./wizard-choices.js";
+
+/** Registers the New project command. */
+export function registerWizard(
+  context: vscode.ExtensionContext,
+  output: vscode.OutputChannel,
+): void {
+  context.subscriptions.push(
+    vscode.commands.registerCommand("ingestron.newProject", () => newProject(output)),
+  );
+}
+
+/** What to create first (template and answers), then where: the folder dialog comes last. */
+async function newProject(output: vscode.OutputChannel): Promise<void> {
+  const choice = await chooseProject();
+  const answers = choice && (await ask(choice));
+  if (!choice || !answers) return;
+  const folder = (
+    await vscode.window.showOpenDialog({
+      canSelectFolders: true,
+      canSelectFiles: false,
+      openLabel: "Create the project here",
+    })
+  )?.[0];
+  if (!folder) return;
+  output.clear();
+  output.show(true);
+  const code = run(["init", folder.fsPath, ...answers, "--yes"], {
+    cwd: folder.fsPath,
+    write: (text) => output.append(text),
+  });
+  if (code !== 0) return;
+  await vscode.window.showTextDocument(vscode.Uri.file(join(folder.fsPath, "project.yaml")));
+  await offerFolder(folder);
+}
+
+/**
+ * Explorer shows the workspace, so a project created outside it would stay
+ * hidden: offer to open its folder, or to add it beside the others.
+ */
+async function offerFolder(folder: vscode.Uri): Promise<void> {
+  if (vscode.workspace.getWorkspaceFolder(folder)) return;
+  const open = "Open folder";
+  const add = "Add to workspace";
+  const picked = await vscode.window.showInformationMessage(
+    `Created the project in ${folder.fsPath}. Open its folder to see its flows and contracts in Explorer; next, change the flow in flows/ to your own source.`,
+    open,
+    add,
+  );
+  if (picked === open) await vscode.commands.executeCommand("vscode.openFolder", folder);
+  if (picked === add) {
+    const at = vscode.workspace.workspaceFolders?.length ?? 0;
+    vscode.workspace.updateWorkspaceFolders(at, 0, { uri: folder });
+  }
+}
+
+/** The answers as init flags, or undefined when the user cancels. */
+async function ask(choice: ProjectChoice): Promise<string[] | undefined> {
+  const template = choice.template;
+  // Checked as you type, with the same rule as the command.
+  const name = await vscode.window.showInputBox({
+    prompt: "Project name: lowercase letters, digits and underscores",
+    value: projectId(choice.connector),
+    validateInput: (text) => nameProblem(text, "project"),
+  });
+  if (name === undefined) return undefined;
+  const known = "dev, prod";
+  const environments = await vscode.window.showInputBox({
+    prompt: "Environments, separated by commas",
+    value: known,
+    validateInput: environmentsProblem,
+  });
+  if (environments === undefined) return undefined;
+  const standard = await vscode.window.showInputBox({
+    prompt:
+      "Standard for this project (both packs when using ADF): path or Git URL, or keep the default",
+  });
+  if (standard === undefined) return undefined;
+  const values = await questions(template);
+  if (!values) return undefined;
+  return [
+    "--connector",
+    choice.connector,
+    "--connectivity",
+    choice.connectivity,
+    "--via",
+    choice.via,
+    "--name",
+    name,
+    ...environments
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .flatMap((item) => ["--env", item]),
+    ...(standard ? ["--standard", standard] : []),
+    ...values,
+  ];
+}
+
+async function questions(template: Template | undefined): Promise<string[] | undefined> {
+  const flags: string[] = [];
+  for (const question of template?.questions ?? []) {
+    const answer = await vscode.window.showInputBox({
+      prompt: question.ask,
+      value: question.default,
+    });
+    if (answer === undefined) return undefined;
+    flags.push("--set", `${question.value}=${answer}`);
+  }
+  return flags;
+}
+
+/** The first environment name that is not valid, with the command's own rule. */
+function environmentsProblem(text: string): string | undefined {
+  const names = text
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (names.length === 0) return "Name at least one environment, such as dev.";
+  return names.map((item) => nameProblem(item, "environment")).find(Boolean);
+}

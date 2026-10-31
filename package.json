@@ -1,0 +1,261 @@
+{
+  "name": "ingestron-vscode",
+  "displayName": "Ingestron",
+  "description": "Problems, navigation, completion, setting explanations and generated-file previews for Ingestron projects.",
+  "version": "0.1.0",
+  "publisher": "ingestron",
+  "private": true,
+  "license": "Apache-2.0",
+  "author": "IntentLabs <hello@ingestron.io>",
+  "homepage": "https://ingestron.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ingestron/ingestron.git",
+    "directory": "apps/vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/ingestron/ingestron/issues",
+    "email": "hello@ingestron.io"
+  },
+  "type": "module",
+  "engines": {
+    "vscode": "^1.104.0",
+    "node": ">=22.13.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters"
+  ],
+  "main": "./dist/extension.cjs",
+  "activationEvents": [
+    "onWalkthrough:start",
+    "workspaceContains:**/project.yaml"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "ingestron.plan",
+        "title": "Plan",
+        "category": "Ingestron"
+      },
+      {
+        "command": "ingestron.apply",
+        "title": "Apply",
+        "category": "Ingestron"
+      },
+      {
+        "command": "ingestron.check",
+        "title": "Check",
+        "category": "Ingestron"
+      },
+      {
+        "command": "ingestron.toggleAutoApply",
+        "title": "Turn auto-apply on or off",
+        "category": "Ingestron"
+      },
+      {
+        "command": "ingestron.selectEnvironment",
+        "title": "Select environment",
+        "category": "Ingestron"
+      },
+      {
+        "command": "ingestron.showGenerated",
+        "title": "Show generated files",
+        "category": "Ingestron"
+      },
+      {
+        "command": "ingestron.compareWithBuild",
+        "title": "Compare with build",
+        "category": "Ingestron"
+      },
+      {
+        "command": "ingestron.newProject",
+        "title": "New project",
+        "category": "Ingestron"
+      },
+      {
+        "command": "ingestron.showReference",
+        "title": "Show reference",
+        "category": "Ingestron"
+      },
+      {
+        "command": "ingestron.platformRequest",
+        "title": "Prepare platform request",
+        "category": "Ingestron"
+      },
+      {
+        "command": "ingestron.compareEnvironments",
+        "title": "Compare environments",
+        "category": "Ingestron"
+      },
+      {
+        "command": "ingestron.draftContract",
+        "title": "Draft contract from sample",
+        "category": "Ingestron"
+      }
+    ],
+    "configuration": {
+      "title": "Ingestron",
+      "properties": {
+        "ingestron.docs.url": {
+          "type": "string",
+          "default": "https://docs.ingestron.io",
+          "description": "Address of the Ingestron documentation that hovers, completions and problem codes link to, such as http://localhost:3000 for a local build."
+        }
+      }
+    },
+    "viewsContainers": {
+      "secondarySidebar": [
+        {
+          "id": "ingestron",
+          "title": "Ingestron",
+          "icon": "media/reference.svg"
+        }
+      ]
+    },
+    "views": {
+      "ingestron": [
+        {
+          "type": "webview",
+          "id": "ingestron.reference",
+          "name": "Reference"
+        }
+      ]
+    },
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "ingestron.draftContract",
+          "when": "resourceExtname =~ /^\\.(csv|json|jsonl|ndjson)$/",
+          "group": "7_modification"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "ingestron.draftContract",
+          "when": "resourceExtname =~ /^\\.(csv|json|jsonl|ndjson)$/"
+        }
+      ]
+    },
+    "walkthroughs": [
+      {
+        "id": "start",
+        "title": "Get started with Ingestron",
+        "description": "From a new project to generated Databricks assets and a request for your platform team.",
+        "steps": [
+          {
+            "id": "project",
+            "title": "Create a project",
+            "description": "Choose a connection, supported ingestion route and standard.\n[New project](command:ingestron.newProject)",
+            "media": {
+              "markdown": "media/walkthrough/project.md"
+            },
+            "completionEvents": [
+              "onContext:ingestron.done.project"
+            ]
+          },
+          {
+            "id": "connection",
+            "title": "Describe where data comes from",
+            "description": "Add a Connection under connections/. In a new, empty YAML file there, press Ctrl+Space for a skeleton.",
+            "media": {
+              "markdown": "media/walkthrough/connection.md"
+            },
+            "completionEvents": [
+              "onContext:ingestron.done.connection"
+            ]
+          },
+          {
+            "id": "contract",
+            "title": "Write or draft a contract",
+            "description": "Add a DataContract under contracts/, or right-click a CSV or JSON sample and choose Draft contract from sample.",
+            "media": {
+              "markdown": "media/walkthrough/contract.md"
+            },
+            "completionEvents": [
+              "onContext:ingestron.done.contract"
+            ]
+          },
+          {
+            "id": "flow",
+            "title": "Choose the tables to bring",
+            "description": "Add a Flow under flows/ that names the connection and each table's contract.",
+            "media": {
+              "markdown": "media/walkthrough/flow.md"
+            },
+            "completionEvents": [
+              "onContext:ingestron.done.flow"
+            ]
+          },
+          {
+            "id": "generate",
+            "title": "See what is generated, then apply",
+            "description": "Read the generated files before writing them, then apply.\n[Plan](command:ingestron.plan)\n[Apply](command:ingestron.apply)",
+            "media": {
+              "markdown": "media/walkthrough/generate.md"
+            },
+            "completionEvents": [
+              "onCommand:ingestron.apply"
+            ]
+          },
+          {
+            "id": "platform",
+            "title": "Ask the platform team",
+            "description": "One document with what the project needs from whoever runs the data platform.\n[Prepare platform request](command:ingestron.platformRequest)",
+            "media": {
+              "markdown": "media/walkthrough/platform.md"
+            },
+            "completionEvents": [
+              "onCommand:ingestron.platformRequest"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "package": "node scripts/package.mjs",
+    "validate": "pnpm format:check && pnpm secrets:check && pnpm licences:check && node --test scripts/*.test.mjs && pnpm lint && pnpm typecheck && pnpm build && pnpm test",
+    "test:integration": "node scripts/build.mjs && node test/integration/run.mjs",
+    "screenshots": "node scripts/screenshots.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "secrets:check": "node scripts/scan-secrets.mjs",
+    "licences:check": "node scripts/check-licences.mjs",
+    "dco:check": "node scripts/check-dco.mjs"
+  },
+  "dependencies": {
+    "@ingestron/authoring": "^1.0.0",
+    "@ingestron/cli": "^1.0.0",
+    "@ingestron/definitions": "^1.0.0",
+    "@ingestron/generate": "^1.0.0",
+    "@ingestron/pack-adf": "^1.0.0",
+    "@ingestron/pack-databricks": "^1.0.0",
+    "@ingestron/config": "^1.0.0",
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/vscode": "1.100.0",
+    "@vscode/test-electron": "3.1.0",
+    "@vscode/vsce": "4.0.0",
+    "esbuild": "0.28.2",
+    "eslint": "10.13.0",
+    "eslint-plugin-jsdoc": "65.4.2",
+    "playwright-core": "1.63.0",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.0",
+    "vitest": "5.0.5"
+  },
+  "packageManager": "pnpm@10.15.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}
