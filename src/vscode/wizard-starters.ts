@@ -10,6 +10,8 @@ import { parse } from "yaml";
 export interface StarterChoice {
   template: Template;
   environments: string[];
+  /** The starter's project id, which its connections and contracts are named for. */
+  id: string;
 }
 
 /** Connection first, as before, or a ready-made starter. */
@@ -42,14 +44,21 @@ export async function chooseStarter(): Promise<StarterChoice | undefined> {
       id: template.name,
       template,
     })),
-    { title: "New project: starter", placeHolder: "Search starters", matchOnDetail: true },
+    {
+      title: "New project: starter",
+      placeHolder: "Search starters",
+      matchOnDescription: true,
+      matchOnDetail: true,
+    },
   );
   if (!picked) return undefined;
   const project = parse(readFileSync(join(picked.template.folder, "project.yaml"), "utf8")) as {
+    id?: string;
     environments?: Record<string, unknown>;
   };
   return {
     template: picked.template,
     environments: Object.keys(project.environments ?? { dev: {} }),
+    id: project.id ?? picked.template.name,
   };
 }
