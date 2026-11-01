@@ -1,7 +1,8 @@
 // Ingestron: New project. The init questions as pickers and input boxes;
 // then the CLI's own `init` with every answer as a flag, and an offer to open
 // the new folder when it is outside the workspace.
-import { join } from "node:path";
+import { existsSync } from "node:fs";
+import { isAbsolute, join } from "node:path";
 import { nameProblem, projectId, run, type Template } from "@ingestron/cli";
 import * as vscode from "vscode";
 import { chooseProject, type ProjectChoice } from "./wizard-choices.js";
@@ -78,14 +79,21 @@ async function askStarter(): Promise<string[] | undefined> {
   if (!choice || !named || standard === undefined) return undefined;
   const values = await questions(choice.template);
   return (
-    values && [
-      "--template",
-      choice.template.name,
-      ...named,
-      ...(standard ? ["--standard", standard] : []),
-      ...values,
-    ]
+    values && ["--template", choice.template.name, ...named, ...standardFlags(standard), ...values]
   );
+}
+
+/**
+ * The standard as an init flag. init runs in the new project's folder, so a
+ * relative path to a file in the workspace is made absolute; anything else,
+ * such as a Git URL, goes to init as written.
+ */
+function standardFlags(text: string): string[] {
+  const spec = text.trim();
+  if (!spec) return [];
+  const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  const inWorkspace = root && !isAbsolute(spec) ? join(root, spec) : undefined;
+  return ["--standard", inWorkspace && existsSync(inWorkspace) ? inWorkspace : spec];
 }
 
 async function askConnection(): Promise<string[] | undefined> {
@@ -140,7 +148,7 @@ async function ask(choice: ProjectChoice): Promise<string[] | undefined> {
     "--via",
     choice.via,
     ...named,
-    ...(standard ? ["--standard", standard] : []),
+    ...standardFlags(standard),
     ...values,
   ];
 }

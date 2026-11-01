@@ -13,6 +13,7 @@ const state = vi.hoisted(() => ({
   output: "",
   folderAsked: false,
   suggested: [] as (string | undefined)[],
+  workspace: "",
 }));
 vi.mock("vscode", () => ({
   commands: {
@@ -21,7 +22,12 @@ vi.mock("vscode", () => ({
     },
   },
   Uri: { file: (fsPath: string) => ({ fsPath }) },
-  workspace: { getWorkspaceFolder: () => true },
+  workspace: {
+    getWorkspaceFolder: () => true,
+    get workspaceFolders() {
+      return state.workspace ? [{ uri: { fsPath: state.workspace } }] : undefined;
+    },
+  },
   window: {
     showQuickPick: async (items: (string | { label: string; id?: string; via?: string })[]) => {
       state.menus.push(items.map((item) => (typeof item === "string" ? item : item.label)));
@@ -56,6 +62,7 @@ beforeEach(() => {
   state.folderAsked = false;
   state.suggested = [];
   state.output = "";
+  state.workspace = "";
   state.folder = join(mkdtempSync(join(tmpdir(), "ingestron-wizard-")), "project");
   registerWizard(
     { subscriptions: [] } as unknown as vscode.ExtensionContext,
@@ -105,13 +112,19 @@ it.each([0, 1, 2, 3, 4])(
     expect(existsSync(state.folder)).toBe(false);
   },
 );
-it("cancels configuration without writing or asking for the folder", async () => {
-  state.choices = ["From a connection", "All sources", "postgresql", "private"];
-  state.inputs = ["orders", "dev", "", undefined];
-  await state.command!();
-  expect(state.folderAsked).toBe(false);
-  expect(existsSync(state.folder)).toBe(false);
-});
+it.each([1, 2, 3, 4])(
+  "cancels a connection at input %s (name, environments, standard, a question) without writing",
+  async (step) => {
+    state.choices = ["From a connection", "All sources", "postgresql", "private", "adf"];
+    state.inputs = ["orders", "dev", "", "abfss://raw@acct.dfs.core.windows.net"].map(
+      (value, index) => (index === step - 1 ? undefined : value),
+    );
+    await state.command!();
+    expect(state.suggested).toHaveLength(step);
+    expect(state.folderAsked).toBe(false);
+    expect(existsSync(state.folder)).toBe(false);
+  },
+);
 it("creates a project from a starter, with the starter's environments", async () => {
   state.choices = ["From a starter", "duckdb"];
   await state.command!();
@@ -157,6 +170,34 @@ it("suggests the starter's project id as the name, and takes a standard", async 
   state.inputs = ["<default>", "dev", standard];
   await state.command!();
   expect(state.suggested[0]).toBe("stores");
+  expect(state.output).toContain("Created");
+  expect(readFileSync(join(state.folder, "standard.yaml"), "utf8")).toContain("id: acme");
+});
+
+it("uses a starter question's default when its answer is left empty", async () => {
+  state.choices = ["From a starter", "minimal"];
+  state.inputs = ["<default>", "dev", "", "   "];
+  await state.command!();
+  expect(state.output).toContain("Created");
+  expect(readFileSync(join(state.folder, "project.yaml"), "utf8")).toContain(
+    "landing: /Volumes/dev/landing/shop",
+  );
+});
+
+it("reads a standard's relative path from the workspace, and ignores spaces around it", async () => {
+  state.workspace = mkdtempSync(join(tmpdir(), "ingestron-workspace-"));
+  mkdirSync(join(state.workspace, "standards"));
+  const own = join(
+    import.meta.dirname,
+    "../node_modules/@ingestron/cli/project-templates/minimal/standard.yaml",
+  );
+  writeFileSync(
+    join(state.workspace, "standards/acme.yaml"),
+    readFileSync(own, "utf8").replace(/^id: .*$/m, "id: acme"),
+  );
+  state.choices = ["From a starter", "minimal"];
+  state.inputs = ["<default>", "dev", "  standards/acme.yaml  "];
+  await state.command!();
   expect(state.output).toContain("Created");
   expect(readFileSync(join(state.folder, "standard.yaml"), "utf8")).toContain("id: acme");
 });
