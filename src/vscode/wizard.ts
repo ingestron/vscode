@@ -140,7 +140,8 @@ async function questions(template: Template | undefined): Promise<string[] | und
       value: question.default,
     });
     if (answer === undefined) return undefined;
-    flags.push("--set", `${question.value}=${answer}`);
+    // As in the terminal: an empty answer takes the default.
+    flags.push("--set", `${question.value}=${answer.trim() || question.default}`);
   }
   return flags;
 }

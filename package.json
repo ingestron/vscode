@@ -145,7 +145,7 @@
           {
             "id": "project",
             "title": "Create a project",
-            "description": "Choose a connection, supported ingestion route and standard, or start from a starter such as DuckDB on a laptop.\n[New project](command:ingestron.newProject)",
+            "description": "Choose a connection, supported ingestion route and standard, or copy a starter such as DuckDB on a laptop.\n[New project](command:ingestron.newProject)",
             "media": {
               "markdown": "media/walkthrough/project.md"
             },
