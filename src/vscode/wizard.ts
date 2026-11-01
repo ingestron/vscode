@@ -127,8 +127,7 @@ async function ask(choice: ProjectChoice): Promise<string[] | undefined> {
   const named = await nameAndEnvironments(choice.connector, ["dev", "prod"]);
   if (!named) return undefined;
   const standard = await vscode.window.showInputBox({
-    prompt:
-      "Standard for this project (both packs when using ADF): path or Git URL, or keep the default",
+    prompt: "Your organisation's standard: path or Git URL, or keep the route's own",
   });
   if (standard === undefined) return undefined;
   const values = await questions(template);

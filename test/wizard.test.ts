@@ -69,20 +69,30 @@ beforeEach(() => {
   );
 });
 it("creates the selected ADF connection with the shared CLI questions", async () => {
-  state.choices = ["From a connection", "All sources", "postgresql", "private"];
+  state.choices = ["From a connection", "All sources", "postgresql", "private", "adf"];
   await state.command!();
+  expect(state.menus[4]).toEqual([
+    "ADF ingestion into Databricks",
+    "ADF ingestion, served as Synapse serverless SQL views",
+    "ADF ingestion into DuckDB tables",
+    "ADF ingestion, ending at the landed files",
+  ]);
   expect(state.folderAsked).toBe(true);
   expect(state.output).toContain("Created");
   expect(readFileSync(join(state.folder, "connections/postgresql.yaml"), "utf8")).toContain(
     "connector: postgresql",
   );
   expect(readFileSync(join(state.folder, "standard.yaml"), "utf8")).toContain("adf@1");
-  expect(state.menus).toHaveLength(4);
+  expect(state.menus).toHaveLength(5);
 });
 it("offers both routes for public files and creates the chosen direct project", async () => {
   state.choices = ["From a connection", "Files and storage", "files", "public", "databricks"];
   await state.command!();
-  expect(state.menus[4]).toEqual(["Databricks directly", "ADF ingestion into Databricks"]);
+  expect(state.menus[4]).toEqual([
+    "Databricks directly",
+    "ADF ingestion into Databricks",
+    "ADF ingestion, ending at the landed files",
+  ]);
   expect(state.output).toContain("Created");
   expect(readFileSync(join(state.folder, "standard.yaml"), "utf8")).not.toContain("adf@1");
 });
