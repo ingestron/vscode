@@ -114,3 +114,12 @@ it("cancels choosing a starter without asking for a folder", async () => {
   await state.command!();
   expect(state.folderAsked).toBe(false);
 });
+it("uses a starter question's default when its answer is left empty", async () => {
+  state.choices = ["From a starter", "minimal"];
+  state.inputs = ["shop", "dev", "   "];
+  await state.command!();
+  expect(state.output).toContain("Created");
+  expect(readFileSync(join(state.folder, "project.yaml"), "utf8")).toContain(
+    "landing: /Volumes/dev/landing/shop",
+  );
+});
