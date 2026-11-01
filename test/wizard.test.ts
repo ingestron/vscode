@@ -64,7 +64,7 @@ beforeEach(() => {
   );
 });
 it("creates the selected ADF connection with the shared CLI questions", async () => {
-  state.choices = ["All sources", "postgresql", "private"];
+  state.choices = ["From a connection", "All sources", "postgresql", "private"];
   await state.command!();
   expect(state.folderAsked).toBe(true);
   expect(state.output).toContain("Created");
@@ -72,28 +72,45 @@ it("creates the selected ADF connection with the shared CLI questions", async ()
     "connector: postgresql",
   );
   expect(readFileSync(join(state.folder, "standard.yaml"), "utf8")).toContain("adf@1");
-  expect(state.menus).toHaveLength(3);
+  expect(state.menus).toHaveLength(4);
 });
 it("offers both routes for public files and creates the chosen direct project", async () => {
-  state.choices = ["Files and storage", "files", "public", "databricks"];
+  state.choices = ["From a connection", "Files and storage", "files", "public", "databricks"];
   await state.command!();
-  expect(state.menus[3]).toEqual(["Databricks directly", "ADF ingestion into Databricks"]);
+  expect(state.menus[4]).toEqual(["Databricks directly", "ADF ingestion into Databricks"]);
   expect(state.output).toContain("Created");
   expect(readFileSync(join(state.folder, "standard.yaml"), "utf8")).not.toContain("adf@1");
 });
-it.each([0, 1, 2, 3])(
+it.each([0, 1, 2, 3, 4])(
   "cancels at source-choice step %s without asking for a folder",
   async (step) => {
-    state.choices = ["All sources", "files", "public", "adf"].slice(0, step);
+    state.choices = ["From a connection", "All sources", "files", "public", "adf"].slice(0, step);
     await state.command!();
     expect(state.folderAsked).toBe(false);
     expect(existsSync(state.folder)).toBe(false);
   },
 );
 it("cancels configuration without writing or asking for the folder", async () => {
-  state.choices = ["All sources", "postgresql", "private"];
+  state.choices = ["From a connection", "All sources", "postgresql", "private"];
   state.inputs = ["orders", "dev", "", undefined];
   await state.command!();
   expect(state.folderAsked).toBe(false);
   expect(existsSync(state.folder)).toBe(false);
+});
+it("creates a project from a starter, with the starter's environments", async () => {
+  state.choices = ["From a starter", "duckdb"];
+  await state.command!();
+  expect(state.menus[0]).toEqual(["From a connection", "From a starter"]);
+  expect(state.menus[1]).toContain("DuckDB on a laptop");
+  expect(state.output).toContain("Created");
+  expect(existsSync(join(state.folder, "samples/orders.csv"))).toBe(true);
+  expect(readFileSync(join(state.folder, "standard.yaml"), "utf8")).toContain("duckdb@1");
+  const project = readFileSync(join(state.folder, "project.yaml"), "utf8");
+  expect(project).toContain("dev: {}");
+  expect(project).not.toContain("prod");
+});
+it("cancels choosing a starter without asking for a folder", async () => {
+  state.choices = ["From a starter"];
+  await state.command!();
+  expect(state.folderAsked).toBe(false);
 });
