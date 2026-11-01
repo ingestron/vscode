@@ -19,5 +19,6 @@ imports:
 **New project** starts from a connection: it asks for the source category,
 connection, supported route and standard, then the settings and destination
 folder. Or it copies a starter, a ready-made project such as DuckDB on a
-laptop: give it a name, environments, any settings the starter asks for, and a
-folder.
+laptop: give it a name, environments, your organisation's standard if you have
+one, any settings the starter asks for, and a folder. A standard's path can be
+relative to the workspace.
