@@ -16,6 +16,8 @@ describe("extension package", () => {
     expect(files).toContain("LICENSE");
     expect(files).toContain("NOTICE");
     expect(files).toContain("THIRD_PARTY_NOTICES");
+    // Screenshots and other scratch output stay out of the package.
+    expect(files.filter((file) => file.startsWith(".tmp/"))).toEqual([]);
     const notices = readFileSync(join(root, "THIRD_PARTY_NOTICES"), "utf8");
     expect(notices).toMatch(/^## yaml@/m);
     expect(notices).not.toMatch(/@ingestron\//);
