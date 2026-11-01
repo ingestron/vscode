@@ -1,5 +1,5 @@
 // New project from a starter: one of the CLI's built-in templates, such as
-// DuckDB on a laptop, created with the template's own standard and environments.
+// DuckDB on a laptop, with the template's environments and project id offered.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { builtInTemplates, type Template } from "@ingestron/cli";
