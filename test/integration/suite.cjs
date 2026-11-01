@@ -54,7 +54,8 @@ async function autoApply(folder) {
   await document.save();
   const sql = path.join(folder, "build/dev/src/retail/bronze/orders.sql");
   await until(
-    () => fs.readFileSync(sql, "utf8").includes("total >= 1"),
+    // The file appears after the debounced apply, so a missing file is not yet a failure.
+    () => fs.existsSync(sql) && fs.readFileSync(sql, "utf8").includes("total >= 1"),
     "auto-apply to regenerate orders.sql",
   );
   await vscode.commands.executeCommand("ingestron.toggleAutoApply");
