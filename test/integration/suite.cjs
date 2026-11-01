@@ -159,6 +159,7 @@ exports.run = async function run() {
   await renameRefused(flow, document);
   await codeFileMoves(folder);
   await codeTooltip(folder);
+  await dataProducts(folder);
   await symbols(folder, flow);
   await coreLoop();
   await moveToStandard(flow, document);
@@ -336,6 +337,43 @@ async function codeTooltip(folder) {
   const code = hints.find((hint) => typeof hint.tooltip?.value === "string");
   assert.ok(code, "no hint with code in its tooltip");
   assert.match(code.tooltip.value, /```sql\n[\s\S]*SELECT/i);
+}
+
+/**
+ * A data product gets a passport on Apply; with governance in the standard,
+ * its unclassified columns are problems. Both files are restored after.
+ */
+async function dataProducts(folder) {
+  const product = path.join(folder, "contracts/customers.product.yaml");
+  const standard = path.join(folder, "standard.yaml");
+  const kept = fs.readFileSync(standard, "utf8");
+  fs.writeFileSync(
+    product,
+    "apiVersion: v1.1.0\nkind: DataProduct\nid: customers\nname: Customers\n" +
+      "outputPorts:\n  - { name: customers, contractId: shop.customers }\n",
+  );
+  const passport = path.join(folder, "build/dev/products/customers.md");
+  await until(async () => {
+    await vscode.commands.executeCommand("ingestron.apply");
+    return fs.existsSync(passport);
+  }, "the passport after Apply");
+  assert.match(fs.readFileSync(passport, "utf8"), /^# Customers/);
+  fs.writeFileSync(standard, `${kept}governance:\n  classification: { columns: required }\n`);
+  const contract = vscode.Uri.file(path.join(folder, "contracts/customers.yaml"));
+  await until(
+    () =>
+      vscode.languages
+        .getDiagnostics(contract)
+        .some((item) => codeOf(item) === "COLUMN_UNCLASSIFIED"),
+    "the COLUMN_UNCLASSIFIED problem",
+  );
+  fs.writeFileSync(standard, kept);
+  fs.rmSync(product);
+  fs.rmSync(path.join(folder, "build/dev/products"), { recursive: true, force: true });
+  await until(
+    () => vscode.languages.getDiagnostics(contract).length === 0,
+    "the problems to clear",
+  );
 }
 
 /** Go to Symbol in Workspace finds a table; the flow's outline lists its tables. */
