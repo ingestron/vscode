@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { nameProblem, projectId, run, type Template } from "@ingestron/cli";
 import * as vscode from "vscode";
 import { chooseProject, type ProjectChoice } from "./wizard-choices.js";
+import { chooseStart, chooseStarter } from "./wizard-starters.js";
 
 /** Registers the New project command. */
 export function registerWizard(
@@ -18,9 +19,14 @@ export function registerWizard(
 
 /** What to create first (template and answers), then where: the folder dialog comes last. */
 async function newProject(output: vscode.OutputChannel): Promise<void> {
-  const choice = await chooseProject();
-  const answers = choice && (await ask(choice));
-  if (!choice || !answers) return;
+  const start = await chooseStart();
+  const answers =
+    start === "starter"
+      ? await askStarter()
+      : start === "connection"
+        ? await askConnection()
+        : undefined;
+  if (!answers) return;
   const folder = (
     await vscode.window.showOpenDialog({
       canSelectFolders: true,
@@ -60,23 +66,52 @@ async function offerFolder(folder: vscode.Uri): Promise<void> {
   }
 }
 
-/** The answers as init flags, or undefined when the user cancels. */
-async function ask(choice: ProjectChoice): Promise<string[] | undefined> {
-  const template = choice.template;
-  // Checked as you type, with the same rule as the command.
+/** A starter's answers as init flags: its own standard, so no standard question. */
+async function askStarter(): Promise<string[] | undefined> {
+  const choice = await chooseStarter();
+  const named = choice && (await nameAndEnvironments(choice.template.name, choice.environments));
+  const values = named && (await questions(choice.template));
+  return values && ["--template", choice.template.name, ...named, ...values];
+}
+
+async function askConnection(): Promise<string[] | undefined> {
+  const choice = await chooseProject();
+  return choice && (await ask(choice));
+}
+
+/** The name and environments as init flags, checked as you type with the command's rules. */
+async function nameAndEnvironments(
+  suggested: string,
+  known: string[],
+): Promise<string[] | undefined> {
   const name = await vscode.window.showInputBox({
     prompt: "Project name: lowercase letters, digits and underscores",
-    value: projectId(choice.connector),
+    value: projectId(suggested),
     validateInput: (text) => nameProblem(text, "project"),
   });
   if (name === undefined) return undefined;
-  const known = "dev, prod";
   const environments = await vscode.window.showInputBox({
     prompt: "Environments, separated by commas",
-    value: known,
+    value: known.join(", "),
     validateInput: environmentsProblem,
   });
   if (environments === undefined) return undefined;
+  return [
+    "--name",
+    name,
+    ...environments
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .flatMap((item) => ["--env", item]),
+  ];
+}
+
+/** The answers as init flags, or undefined when the user cancels. */
+async function ask(choice: ProjectChoice): Promise<string[] | undefined> {
+  const template = choice.template;
+  const named = await nameAndEnvironments(choice.connector, ["dev", "prod"]);
+  if (!named) return undefined;
   const standard = await vscode.window.showInputBox({
     prompt:
       "Standard for this project (both packs when using ADF): path or Git URL, or keep the default",
@@ -91,13 +126,7 @@ async function ask(choice: ProjectChoice): Promise<string[] | undefined> {
     choice.connectivity,
     "--via",
     choice.via,
-    "--name",
-    name,
-    ...environments
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .flatMap((item) => ["--env", item]),
+    ...named,
     ...(standard ? ["--standard", standard] : []),
     ...values,
   ];
