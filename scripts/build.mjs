@@ -3,7 +3,7 @@
 // schemas, the Databricks pack's SQL templates, the ADF pack's connector
 // recipes and the CLI's project templates. In the bundle, import.meta.url is
 // the bundle's own file, so "../schemas" and the others resolve to these copies.
-import { cpSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
@@ -29,7 +29,10 @@ const { metafile } = await build({
 });
 writeFileSync(join(root, "THIRD_PARTY_NOTICES"), thirdPartyNotices(metafile, root));
 
-const installed = (name) => join(root, "node_modules/@ingestron", name);
+// The data folders come from the packages the CLI itself resolves, the same
+// versions the bundle's code comes from, not whatever the extension lists.
+const cli = realpathSync(join(root, "node_modules/@ingestron/cli"));
+const installed = (name) => (name === "cli" ? cli : join(dirname(cli), name));
 const notGenerated = (path) => !/\/(build|\.generated\.json)(\/|$)/.test(path);
 for (const [from, to] of [
   ["definitions/schemas", "schemas"],

@@ -1,5 +1,5 @@
 // Exercise the actual command and shared CLI with synthetic picker/input responses.
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, expect, it, vi } from "vitest";
@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   folder: "",
   output: "",
   folderAsked: false,
+  suggested: [] as (string | undefined)[],
 }));
 vi.mock("vscode", () => ({
   commands: {
@@ -32,8 +33,11 @@ vi.mock("vscode", () => ({
           : [item.label, item.id, item.via].includes(choice),
       );
     },
-    showInputBox: async (options: { value?: string }) =>
-      state.inputs.length ? state.inputs.shift() : (options.value ?? ""),
+    showInputBox: async (options: { value?: string }) => {
+      state.suggested.push(options.value);
+      const next = state.inputs.length ? state.inputs.shift() : "<default>";
+      return next === "<default>" ? (options.value ?? "") : next;
+    },
     showOpenDialog: async () => {
       state.folderAsked = true;
       return [{ fsPath: state.folder }];
@@ -50,6 +54,7 @@ beforeEach(() => {
   state.inputs = [];
   state.menus = [];
   state.folderAsked = false;
+  state.suggested = [];
   state.output = "";
   state.folder = join(mkdtempSync(join(tmpdir(), "ingestron-wizard-")), "project");
   registerWizard(
@@ -109,17 +114,39 @@ it("creates a project from a starter, with the starter's environments", async ()
   expect(project).toContain("dev: {}");
   expect(project).not.toContain("prod");
 });
+it.each([1, 2, 3, 4])(
+  "cancels a starter at question %s without asking for a folder or writing",
+  async (step) => {
+    state.choices = ["From a starter", "minimal"];
+    state.inputs = ["shop", "dev", "", "/Volumes/x"].map((value, index) =>
+      index === step - 1 ? undefined : value,
+    );
+    await state.command!();
+    expect(state.folderAsked).toBe(false);
+    expect(existsSync(state.folder)).toBe(false);
+  },
+);
+
 it("cancels choosing a starter without asking for a folder", async () => {
   state.choices = ["From a starter"];
   await state.command!();
   expect(state.folderAsked).toBe(false);
+  expect(existsSync(state.folder)).toBe(false);
 });
-it("uses a starter question's default when its answer is left empty", async () => {
-  state.choices = ["From a starter", "minimal"];
-  state.inputs = ["shop", "dev", "   "];
-  await state.command!();
-  expect(state.output).toContain("Created");
-  expect(readFileSync(join(state.folder, "project.yaml"), "utf8")).toContain(
-    "landing: /Volumes/dev/landing/shop",
+
+it("suggests the starter's project id as the name, and takes a standard", async () => {
+  const outside = mkdtempSync(join(tmpdir(), "ingestron-standard-"));
+  mkdirSync(outside, { recursive: true });
+  const standard = join(outside, "acme.yaml");
+  const own = join(
+    import.meta.dirname,
+    "../node_modules/@ingestron/cli/project-templates/private-files/standard.yaml",
   );
+  writeFileSync(standard, readFileSync(own, "utf8").replace(/^id: .*$/m, "id: acme"));
+  state.choices = ["From a starter", "private-files"];
+  state.inputs = ["<default>", "dev", standard];
+  await state.command!();
+  expect(state.suggested[0]).toBe("stores");
+  expect(state.output).toContain("Created");
+  expect(readFileSync(join(state.folder, "standard.yaml"), "utf8")).toContain("id: acme");
 });
