@@ -66,12 +66,26 @@ async function offerFolder(folder: vscode.Uri): Promise<void> {
   }
 }
 
-/** A starter's answers as init flags: its own standard, so no standard question. */
+/** A starter's answers as init flags: its name, environments, any standard, and its questions. */
 async function askStarter(): Promise<string[] | undefined> {
   const choice = await chooseStarter();
-  const named = choice && (await nameAndEnvironments(choice.template.name, choice.environments));
-  const values = named && (await questions(choice.template));
-  return values && ["--template", choice.template.name, ...named, ...values];
+  const named = choice && (await nameAndEnvironments(choice.id, choice.environments));
+  const standard =
+    named &&
+    (await vscode.window.showInputBox({
+      prompt: "Your organisation's standard: path or Git URL, or keep the starter's own",
+    }));
+  if (!choice || !named || standard === undefined) return undefined;
+  const values = await questions(choice.template);
+  return (
+    values && [
+      "--template",
+      choice.template.name,
+      ...named,
+      ...(standard ? ["--standard", standard] : []),
+      ...values,
+    ]
+  );
 }
 
 async function askConnection(): Promise<string[] | undefined> {
