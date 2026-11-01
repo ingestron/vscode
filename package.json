@@ -27,7 +27,6 @@
   ],
   "main": "./dist/extension.cjs",
   "activationEvents": [
-    "onWalkthrough:start",
     "workspaceContains:**/project.yaml"
   ],
   "contributes": {
@@ -117,7 +116,8 @@
         {
           "type": "webview",
           "id": "ingestron.reference",
-          "name": "Reference"
+          "name": "Reference",
+          "icon": "media/reference.svg"
         }
       ]
     },
