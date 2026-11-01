@@ -76,7 +76,7 @@ beforeEach(() => {
   );
 });
 it("creates the selected ADF connection with the shared CLI questions", async () => {
-  state.choices = ["From a connection", "All sources", "postgresql", "private", "adf"];
+  state.choices = ["From a connection", "All sources", "postgresql", "private", "adf-databricks"];
   await state.command!();
   expect(state.menus[4]).toEqual([
     "ADF ingestion into Databricks",
@@ -106,7 +106,7 @@ it("offers both routes for public files and creates the chosen direct project", 
 it.each([0, 1, 2, 3, 4])(
   "cancels at source-choice step %s without asking for a folder",
   async (step) => {
-    state.choices = ["From a connection", "All sources", "files", "public", "adf"].slice(0, step);
+    state.choices = ["From a connection", "All sources", "files", "public"].slice(0, step);
     await state.command!();
     expect(state.folderAsked).toBe(false);
     expect(existsSync(state.folder)).toBe(false);
@@ -115,7 +115,7 @@ it.each([0, 1, 2, 3, 4])(
 it.each([1, 2, 3, 4])(
   "cancels a connection at input %s (name, environments, standard, a question) without writing",
   async (step) => {
-    state.choices = ["From a connection", "All sources", "postgresql", "private", "adf"];
+    state.choices = ["From a connection", "All sources", "postgresql", "private", "adf-databricks"];
     state.inputs = ["orders", "dev", "", "abfss://raw@acct.dfs.core.windows.net"].map(
       (value, index) => (index === step - 1 ? undefined : value),
     );

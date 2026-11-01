@@ -9,26 +9,26 @@ importers:
   .:
     dependencies:
       '@ingestron/authoring':
-        specifier: ^1.4.0
-        version: 1.4.0
-      '@ingestron/cli':
         specifier: ^1.5.0
         version: 1.5.0
+      '@ingestron/cli':
+        specifier: ^1.7.0
+        version: 1.7.0
       '@ingestron/config':
         specifier: ^1.2.0
         version: 1.2.0
       '@ingestron/definitions':
-        specifier: ^1.4.0
-        version: 1.4.0
+        specifier: ^1.5.0
+        version: 1.5.0
       '@ingestron/generate':
         specifier: ^1.0.1
         version: 1.0.1
       '@ingestron/pack-adf':
         specifier: ^1.3.0
-        version: 1.3.0(@ingestron/definitions@1.4.0)
+        version: 1.3.0(@ingestron/definitions@1.5.0)
       '@ingestron/pack-databricks':
         specifier: ^1.0.1
-        version: 1.0.1(@ingestron/definitions@1.4.0)
+        version: 1.0.1(@ingestron/definitions@1.5.0)
       yaml:
         specifier: 2.9.1
         version: 2.9.1
@@ -353,12 +353,12 @@ packages:
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
     engines: {node: '>=18.18'}
 
-  '@ingestron/authoring@1.4.0':
-    resolution: {integrity: sha512-3v/CE1p+3kZnwG8uoreqZQM6k7u0KYb4Tn6gj3dsZSMB1ZKuw+5Nq7hE8G9YgDIOofcNMbDTQrEdPiSa0VZlfw==}
+  '@ingestron/authoring@1.5.0':
+    resolution: {integrity: sha512-LAj0rf+H1EFby+Icaa47K+k5dYNtg9KRd7HQvpIpGzTKpFO6RCKo+l0KhV0os1AYRvY65vQ3wOBpsWHEFMQdYw==}
     engines: {node: '>=22.13.0'}
 
-  '@ingestron/cli@1.5.0':
-    resolution: {integrity: sha512-YO1Raxr4tB18KwlYWAGCdUi3QjhNwT8qssDfg4M37MLS17RWxXF8bqJsgEy9ZrEjBpUlh0IOPNwp1oEVyrIjfg==}
+  '@ingestron/cli@1.7.0':
+    resolution: {integrity: sha512-e8K2R/qkcZrw2ETfDIM7u6uqpBReZbDSmz0yghbNN9h5XygNqyNJwUWNS9EDqTpYREGm/pbZy9M5H9a0LM9ZcA==}
     engines: {node: '>=22.13.0'}
     hasBin: true
 
@@ -366,8 +366,8 @@ packages:
     resolution: {integrity: sha512-ZFxiP1sXBe3riFmPfxF1SuKYekAJ3y4P3Z+UeKHbTbfYcDs+CcqCoOW4M18l2dPeHJHc/Q95rq0TwnyIiENU7g==}
     engines: {node: '>=22.13.0'}
 
-  '@ingestron/definitions@1.4.0':
-    resolution: {integrity: sha512-erI9GBUpEs3Aqbxod9PyczkOiZ0iJIx1ZBW5DeqWL4onvHQ4UN1xH0ooZMhaYtLzXXtauh/sAKZBj2zJ/Hg/Ag==}
+  '@ingestron/definitions@1.5.0':
+    resolution: {integrity: sha512-AX/X+h2TfN1BeAhCAs+BvwRTv/CV0PqJk2dr/7fKy7JpaClL+23EX3cNF97SoflC08dJBrWX8wzwEnSVLpwYjg==}
     engines: {node: '>=22.13.0'}
 
   '@ingestron/generate@1.0.1':
@@ -2091,23 +2091,23 @@ snapshots:
 
   '@humanwhocodes/retry@0.4.3': {}
 
-  '@ingestron/authoring@1.4.0':
+  '@ingestron/authoring@1.5.0':
     dependencies:
-      '@ingestron/cli': 1.5.0
+      '@ingestron/cli': 1.7.0
       '@ingestron/config': 1.2.0
-      '@ingestron/definitions': 1.4.0
+      '@ingestron/definitions': 1.5.0
       '@ingestron/generate': 1.0.1
       yaml: 2.9.1
 
-  '@ingestron/cli@1.5.0':
+  '@ingestron/cli@1.7.0':
     dependencies:
       '@ingestron/config': 1.2.0
-      '@ingestron/definitions': 1.4.0
+      '@ingestron/definitions': 1.5.0
       '@ingestron/generate': 1.0.1
-      '@ingestron/pack-adf': 1.3.0(@ingestron/definitions@1.4.0)
-      '@ingestron/pack-databricks': 1.0.1(@ingestron/definitions@1.4.0)
-      '@ingestron/pack-duckdb': 1.2.0(@ingestron/definitions@1.4.0)
-      '@ingestron/pack-synapse': 1.1.0(@ingestron/definitions@1.4.0)
+      '@ingestron/pack-adf': 1.3.0(@ingestron/definitions@1.5.0)
+      '@ingestron/pack-databricks': 1.0.1(@ingestron/definitions@1.5.0)
+      '@ingestron/pack-duckdb': 1.2.0(@ingestron/definitions@1.5.0)
+      '@ingestron/pack-synapse': 1.1.0(@ingestron/definitions@1.5.0)
       yaml: 2.9.1
 
   '@ingestron/config@1.2.0':
@@ -2115,7 +2115,7 @@ snapshots:
       ajv: 8.20.0
       yaml: 2.9.1
 
-  '@ingestron/definitions@1.4.0':
+  '@ingestron/definitions@1.5.0':
     dependencies:
       '@ingestron/config': 1.2.0
       ajv: 8.20.0
@@ -2124,23 +2124,23 @@ snapshots:
 
   '@ingestron/generate@1.0.1': {}
 
-  '@ingestron/pack-adf@1.3.0(@ingestron/definitions@1.4.0)':
+  '@ingestron/pack-adf@1.3.0(@ingestron/definitions@1.5.0)':
     dependencies:
-      '@ingestron/definitions': 1.4.0
+      '@ingestron/definitions': 1.5.0
 
-  '@ingestron/pack-databricks@1.0.1(@ingestron/definitions@1.4.0)':
+  '@ingestron/pack-databricks@1.0.1(@ingestron/definitions@1.5.0)':
     dependencies:
-      '@ingestron/definitions': 1.4.0
+      '@ingestron/definitions': 1.5.0
       liquidjs: 10.30.0
       yaml: 2.9.1
 
-  '@ingestron/pack-duckdb@1.2.0(@ingestron/definitions@1.4.0)':
+  '@ingestron/pack-duckdb@1.2.0(@ingestron/definitions@1.5.0)':
     dependencies:
-      '@ingestron/definitions': 1.4.0
+      '@ingestron/definitions': 1.5.0
 
-  '@ingestron/pack-synapse@1.1.0(@ingestron/definitions@1.4.0)':
+  '@ingestron/pack-synapse@1.1.0(@ingestron/definitions@1.5.0)':
     dependencies:
-      '@ingestron/definitions': 1.4.0
+      '@ingestron/definitions': 1.5.0
 
   '@jridgewell/resolve-uri@3.1.2': {}
 
