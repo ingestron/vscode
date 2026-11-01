@@ -158,6 +158,7 @@ exports.run = async function run() {
   await annotations(flow, document);
   await renameRefused(flow, document);
   await codeFileMoves(folder);
+  await codeTooltip(folder);
   await symbols(folder, flow);
   await coreLoop();
   await moveToStandard(flow, document);
@@ -318,6 +319,23 @@ async function codeFileMoves(folder) {
     await move("transforms/sql/daily.sql", "transforms/daily_sales.sql"),
     /\$\{file:daily_sales\.sql\}/,
   );
+}
+
+/** The hint beside a transform's ${file:…} shows the file's SQL as SQL code. */
+async function codeTooltip(folder) {
+  const yaml = vscode.Uri.file(path.join(folder, "transforms/daily_sales.yaml"));
+  const document = await vscode.workspace.openTextDocument(yaml);
+  const hints = await until(async () => {
+    const found = await vscode.commands.executeCommand(
+      "vscode.executeInlayHintProvider",
+      yaml,
+      new vscode.Range(0, 0, document.lineCount, 0),
+    );
+    return found?.length > 0 && found;
+  }, "inlay hints on the transform");
+  const code = hints.find((hint) => typeof hint.tooltip?.value === "string");
+  assert.ok(code, "no hint with code in its tooltip");
+  assert.match(code.tooltip.value, /```sql\n[\s\S]*SELECT/i);
 }
 
 /** Go to Symbol in Workspace finds a table; the flow's outline lists its tables. */

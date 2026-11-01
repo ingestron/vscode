@@ -36,7 +36,10 @@ function hints(document: vscode.TextDocument, range: vscode.Range): vscode.Inlay
       const end = document.lineAt(item.line).range.end;
       const hint = new vscode.InlayHint(end, item.label);
       hint.paddingLeft = true;
-      if (item.tooltip) hint.tooltip = item.tooltip;
+      if (item.tooltip)
+        hint.tooltip = item.language
+          ? new vscode.MarkdownString().appendCodeblock(item.tooltip, item.language)
+          : item.tooltip;
       return hint;
     });
 }
