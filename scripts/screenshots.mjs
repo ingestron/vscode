@@ -102,6 +102,9 @@ async function session(example, name, { withoutBuild = false, theme } = {}) {
     await keys("Enter");
   };
   const open = async (file) => {
+    // Quick Open from the editor: focus may be in a panel or the Reference tab.
+    await palette("View: Focus Active Editor Group");
+    await pause(300);
     await keys("Meta+P");
     await pause(300);
     await type(file);
