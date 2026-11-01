@@ -16,5 +16,7 @@ imports:
   - contracts/*.yaml
 ```
 
-**New project** asks for the source category, connection, supported route
-and standard, then the settings and destination folder.
+**New project** starts from a connection: it asks for the source category,
+connection, supported route and standard, then the settings and destination
+folder. Or it starts from a starter, a ready-made project such as DuckDB on a
+laptop, which needs only a name, environments and a folder.
