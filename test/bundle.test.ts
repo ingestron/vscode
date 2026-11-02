@@ -1,7 +1,7 @@
 // The bundled extension loads with every data folder in place and activates.
 // VS Code is replaced by a stand-in that accepts any call.
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -35,5 +35,11 @@ describe("bundle", () => {
       encoding: "utf8",
     });
     expect(output.trim()).toBe("activated");
+  });
+
+  it("carries the ADF pack's design settings, so the editor accepts them", () => {
+    const bundle = readFileSync(join(import.meta.dirname, "../dist/extension.cjs"), "utf8");
+    expect(bundle).toContain("audit_columns");
+    expect(bundle).toContain("pattern: foreach is offered for adf-copy");
   });
 });
