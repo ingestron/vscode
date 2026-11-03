@@ -12,11 +12,11 @@ importers:
         specifier: ^1.7.0
         version: 1.7.0
       '@ingestron/cli':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.10.0
+        version: 1.10.0
       '@ingestron/config':
-        specifier: ^1.3.0
-        version: 1.3.0
+        specifier: ^1.4.0
+        version: 1.4.0
       '@ingestron/definitions':
         specifier: ^1.7.0
         version: 1.7.0
@@ -357,13 +357,13 @@ packages:
     resolution: {integrity: sha512-T7I954MuZdDK8tSZuxw572mRN2jG27hpayd9Cvjwi5GzxeqRshWRQEpIUr7y8mXsZrTvJ6RUa8SsURyFNn5W7A==}
     engines: {node: '>=22.13.0'}
 
-  '@ingestron/cli@1.9.0':
-    resolution: {integrity: sha512-oHS36CjaHhauo1aUzRJ8uqerLEYNoqVzoYBZCnYIoEx6rrpzknpl2q+YuqVhmdBrYxqgd460lw57BU0WPKcuFQ==}
+  '@ingestron/cli@1.10.0':
+    resolution: {integrity: sha512-2OJ6v1/6EVooLQs0rlNARVCbVjgNiNw4lhYhQ9A3psKpRElfN5+5f2iMykrzGyWMZISpNBblcCcRf6Rj3wBLuQ==}
     engines: {node: '>=22.13.0'}
     hasBin: true
 
-  '@ingestron/config@1.3.0':
-    resolution: {integrity: sha512-F0Ws3jBubriVzBUUTc3cGBxkqqUxNns+YYAw/P9o0vH0JN06lcoz3ecmTEIxY/DMteK85FtNZCsxe8LPg5BNiw==}
+  '@ingestron/config@1.4.0':
+    resolution: {integrity: sha512-QxxKUs/1MRquAzU3tptMtdkDm3Xqu97bSkQ89lXJLHpXF43t/v1pQtKSVp+tfsTIlh4Iae+g6qVgEKSYFOqr+w==}
     engines: {node: '>=22.13.0'}
 
   '@ingestron/definitions@1.7.0':
@@ -2093,15 +2093,15 @@ snapshots:
 
   '@ingestron/authoring@1.7.0':
     dependencies:
-      '@ingestron/cli': 1.9.0
-      '@ingestron/config': 1.3.0
+      '@ingestron/cli': 1.10.0
+      '@ingestron/config': 1.4.0
       '@ingestron/definitions': 1.7.0
       '@ingestron/generate': 1.0.1
       yaml: 2.9.1
 
-  '@ingestron/cli@1.9.0':
+  '@ingestron/cli@1.10.0':
     dependencies:
-      '@ingestron/config': 1.3.0
+      '@ingestron/config': 1.4.0
       '@ingestron/definitions': 1.7.0
       '@ingestron/generate': 1.0.1
       '@ingestron/pack-adf': 1.5.0(@ingestron/definitions@1.7.0)
@@ -2110,14 +2110,14 @@ snapshots:
       '@ingestron/pack-synapse': 1.2.0(@ingestron/definitions@1.7.0)
       yaml: 2.9.1
 
-  '@ingestron/config@1.3.0':
+  '@ingestron/config@1.4.0':
     dependencies:
       ajv: 8.20.0
       yaml: 2.9.1
 
   '@ingestron/definitions@1.7.0':
     dependencies:
-      '@ingestron/config': 1.3.0
+      '@ingestron/config': 1.4.0
       ajv: 8.20.0
       liquidjs: 10.30.0
       yaml: 2.9.1
