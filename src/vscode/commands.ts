@@ -16,7 +16,8 @@ import {
   type Generated,
 } from "@ingestron/authoring";
 import { previewUri, registerPreviews } from "./previews.js";
-import { chooseEnvironment, contextAt, environmentHere, hereFor } from "./state.js";
+import { selectEnvironment } from "./environment.js";
+import { contextAt, environmentHere, hereFor } from "./state.js";
 
 /** Registers the commands; `refresh` updates problems after the environment changes. */
 export function registerCommands(
@@ -40,10 +41,13 @@ export function registerCommands(
     status,
     vscode.window.onDidChangeActiveTextEditor(updateStatus),
     ...cliCommands(output, refresh),
-    vscode.commands.registerCommand("ingestron.selectEnvironment", async () => {
-      await selectEnvironment(refresh);
-      updateStatus();
-    }),
+    vscode.commands.registerCommand(
+      "ingestron.selectEnvironment",
+      async (folder?: unknown, name?: unknown) => {
+        await selectEnvironment(refresh, folder, name);
+        updateStatus();
+      },
+    ),
     vscode.commands.registerCommand("ingestron.showGenerated", (uri?: vscode.Uri) =>
       showGenerated(false, uri),
     ),
@@ -96,17 +100,6 @@ async function runCli(
   output.show(true);
   run(args, { cwd: folder, write: (text) => output.append(text) });
   return folder;
-}
-
-async function selectEnvironment(refresh: (uri: vscode.Uri) => void): Promise<void> {
-  const here = hereFor(undefined);
-  if (!here || here.project.environments.length === 0) return;
-  const picked = await vscode.window.showQuickPick(here.project.environments, {
-    placeHolder: "Environment for problems and previews",
-  });
-  if (!picked) return;
-  chooseEnvironment(here.project, picked);
-  refresh(vscode.window.activeTextEditor!.document.uri);
 }
 
 async function showGenerated(compare: boolean, clicked?: vscode.Uri): Promise<void> {

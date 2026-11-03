@@ -116,6 +116,11 @@
     "views": {
       "ingestron": [
         {
+          "id": "ingestron.project",
+          "name": "Project",
+          "type": "tree"
+        },
+        {
           "type": "webview",
           "id": "ingestron.reference",
           "name": "Reference",
@@ -123,6 +128,13 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "ingestron.project",
+        "contents": "No Ingestron project in this workspace.\n[New project](command:ingestron.newProject)",
+        "when": "!ingestron.hasProjects"
+      }
+    ],
     "menus": {
       "explorer/context": [
         {

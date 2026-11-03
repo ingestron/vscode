@@ -163,6 +163,7 @@ exports.run = async function run() {
   await symbols(folder, flow);
   await coreLoop();
   await clickedProject(document);
+  await projectView();
   await moveToStandard(flow, document);
   await vscode.commands.executeCommand("ingestron.compareEnvironments");
   await until(
@@ -573,6 +574,46 @@ async function clickedProject(active) {
   await checkedIn(vscode.Uri.file(path.join(byFile, "project.yaml")), "uat", "Check from a file");
   const byFolder = copy("stage");
   await checkedIn(vscode.Uri.file(byFolder), "stage", "Check from a project folder");
+}
+
+/**
+ * The Project view lists the project's environments with the selected one
+ * marked, and clicking another (running its row's command) moves the mark.
+ */
+async function projectView() {
+  await vscode.commands.executeCommand("ingestron.project.focus");
+  const rows = () => vscode.commands.executeCommand("ingestron.projectRows");
+  const environments = async () =>
+    (await rows()).find((row) => row.label === "Environments").children;
+  const before = await environments();
+  assert.deepEqual(
+    before.map((row) => row.label),
+    ["dev", "prod"],
+  );
+  const selected = (list) => list.filter((row) => row.description === "selected");
+  assert.equal(selected(before).length, 1, "one environment is marked selected");
+  const other = before.find((row) => row.description !== "selected");
+  await vscode.commands.executeCommand(other.command.id, ...other.command.args);
+  assert.deepEqual(
+    selected(await environments()).map((row) => row.label),
+    [other.label],
+  );
+  const actions = (await rows()).filter((row) => row.command).map((row) => row.label);
+  assert.deepEqual(actions, [
+    "Check",
+    "Plan",
+    "Apply",
+    "Compare environments",
+    "Prepare platform request",
+    "Show generated files",
+  ]);
+  // Later steps expect the environment this one started with.
+  const first = selected(before)[0];
+  await vscode.commands.executeCommand(first.command.id, ...first.command.args);
+  assert.deepEqual(
+    selected(await environments()).map((row) => row.label),
+    [first.label],
+  );
 }
 
 /** Picks `choice` in the next quick pick, as a person would. */
