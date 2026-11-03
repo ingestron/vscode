@@ -4,7 +4,7 @@
 import { basename, dirname, join } from "node:path";
 import * as vscode from "vscode";
 import { parse } from "yaml";
-import { projectTree, type ProjectInfo, type TreeNode } from "../features/project-tree.js";
+import { projectTree, rowId, type ProjectInfo, type TreeNode } from "../features/project-tree.js";
 import { environmentOf, onProjectChange, projectAt } from "./state.js";
 
 const exclude = "**/{build,node_modules,.git}/**";
@@ -59,7 +59,7 @@ class ProjectTree implements vscode.TreeDataProvider<TreeNode>, vscode.Disposabl
   async getChildren(node?: TreeNode): Promise<TreeNode[]> {
     const rows = node ? (node.children ?? []) : projectTree(await this.projects(), vscode.Uri.file);
     const parent = node ? this.ids.get(node) : "";
-    for (const row of rows) this.ids.set(row, `${parent}/${row.label}`);
+    for (const row of rows) this.ids.set(row, rowId(parent ?? "", row));
     return rows;
   }
 
