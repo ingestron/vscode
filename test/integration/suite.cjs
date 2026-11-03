@@ -621,7 +621,9 @@ async function projectView() {
 /**
  * With two projects the Project view opens the one of the active editor and
  * folds the other. VS Code does not say which rows are open, so this reads
- * what the view hands it: each project row's collapsible state and its id.
+ * what the view last handed it: each project row's collapsible state and its id.
+ * That is read without asking the view to draw again, so the rows change only
+ * when the view was told to redraw, which the editor listener does.
  * VS Code keeps a row's state by id, so a changed id is what makes it take the
  * new state, and an unchanged id is what leaves a row as the person left it.
  */
@@ -650,11 +652,21 @@ async function projectViewFollows(folder, flow) {
         return rows.length === 2 && JSON.stringify(states(rows)) === JSON.stringify(expected);
       }, what),
     );
+  // The second project's environments, as the rows show them: the name marked "selected".
+  const selectedIn = async () => {
+    const rows = await vscode.commands.executeCommand("ingestron.projectRows");
+    const project = rows.find((row) => row.description === "second");
+    const list = project.children.find((row) => row.label === "Environments").children;
+    return list.filter((row) => row.description === "selected").map((row) => row.label);
+  };
+  let outsideFolder;
   const first = { ".": open, second: folded };
   const other = { ".": folded, second: open };
   try {
     await until(async () => (await items()).length === 2, "the Project view to list both projects");
     await showing(flow.uri.fsPath, first, "the first project open and the second folded");
+    // Let the rescan the new folder caused finish, so only the editor can move the view on.
+    await wait(1500);
     const before = await items();
 
     // A file of the second project: it opens and the first folds, under new ids.
@@ -665,14 +677,15 @@ async function projectViewFollows(folder, flow) {
 
     // Nothing changes for another file of the same project, a choice of
     // environment, a file outside every project, or no editor at all.
-    const outside = path.join(
-      fs.mkdtempSync(path.join(require("node:os").tmpdir(), "ingestron-")),
-      "notes.md",
-    );
+    outsideFolder = fs.mkdtempSync(path.join(require("node:os").tmpdir(), "ingestron-"));
+    const outside = path.join(outsideFolder, "notes.md");
     fs.writeFileSync(outside, "Not in a project.\n");
     await showing(path.join(second, "connections/shop.yaml"), other, "the same project");
+    // The rows opened again under new ids still mark the environment chosen.
     await vscode.commands.executeCommand("ingestron.selectEnvironment", second, "prod");
+    assert.deepEqual(await selectedIn(), ["prod"]);
     await vscode.commands.executeCommand("ingestron.selectEnvironment", second, "dev");
+    assert.deepEqual(await selectedIn(), ["dev"]);
     await vscode.window.showTextDocument(vscode.Uri.file(outside));
     await vscode.commands.executeCommand("workbench.action.closeAllEditors");
     await wait(1000);
@@ -686,6 +699,7 @@ async function projectViewFollows(folder, flow) {
     fs.rmSync(path.join(second, "project.yaml"), { force: true });
     await wait(500);
     fs.rmSync(second, { recursive: true, force: true });
+    if (outsideFolder) fs.rmSync(outsideFolder, { recursive: true, force: true });
   }
   await until(
     async () =>

@@ -38,9 +38,9 @@ export function registerProjectView(context: vscode.ExtensionContext): void {
   if (context.extensionMode === vscode.ExtensionMode.Test)
     context.subscriptions.push(
       vscode.commands.registerCommand("ingestron.projectRows", () => provider.getChildren()),
-      vscode.commands.registerCommand("ingestron.projectItems", async () =>
-        (await provider.getChildren()).map((node) => provider.getTreeItem(node)),
-      ),
+      // What VS Code was last handed, without drawing the rows again, so a test can tell
+      // whether the view was told to redraw.
+      vscode.commands.registerCommand("ingestron.projectItems", () => provider.drawnItems()),
     );
   context.subscriptions.push(
     provider,
@@ -62,7 +62,11 @@ export function registerProjectView(context: vscode.ExtensionContext): void {
     vscode.workspace.onDidRenameFiles(() => provider.refresh(true)),
     vscode.workspace.onDidChangeWorkspaceFolders(() => provider.refresh(true)),
     // With several projects, the one being worked on is the one that is open.
-    vscode.window.onDidChangeActiveTextEditor(() => void provider.followEditor()),
+    vscode.window.onDidChangeActiveTextEditor(() =>
+      provider.followEditor().catch((error: unknown) => {
+        console.error("ingestron: the Project view could not follow the editor", error);
+      }),
+    ),
   );
 }
 
@@ -82,6 +86,10 @@ class ProjectTree implements vscode.TreeDataProvider<TreeNode>, vscode.Disposabl
    * otherwise: `reveal` only expands, and `collapseAll` folds every row.
    */
   private active: string | undefined;
+  /** The top-level rows VS Code was last given. */
+  private drawn: TreeNode[] = [];
+  /** The project that was active when those rows were made. */
+  private drawnActive: string | undefined;
   private generation = 0;
 
   /** Rebuilds the rows; `rescan` reads the project folders again first. */
@@ -120,11 +128,24 @@ class ProjectTree implements vscode.TreeDataProvider<TreeNode>, vscode.Disposabl
       : projectTree(await this.projects(), vscode.Uri.file, relativeToWorkspace);
     const parent = node ? this.ids.get(node) : String(this.generation);
     for (const row of rows) this.ids.set(row, rowId(parent ?? "", row));
+    if (!node) {
+      this.drawn = rows;
+      this.drawnActive = this.active;
+    }
     return rows;
   }
 
+  /** The items for the top-level rows VS Code last asked for; reads and changes nothing else. */
+  drawnItems(): vscode.TreeItem[] {
+    return this.drawn.map((node) => this.itemOf(node, this.drawnActive));
+  }
+
   getTreeItem(node: TreeNode): vscode.TreeItem {
-    const item = new vscode.TreeItem(node.label, collapsibleStateOf(foldOf(node, this.active)));
+    return this.itemOf(node, this.active);
+  }
+
+  private itemOf(node: TreeNode, active: string | undefined): vscode.TreeItem {
+    const item = new vscode.TreeItem(node.label, collapsibleStateOf(foldOf(node, active)));
     item.id = this.ids.get(node);
     item.iconPath = new vscode.ThemeIcon(node.icon);
     if (node.description) item.description = node.description;
