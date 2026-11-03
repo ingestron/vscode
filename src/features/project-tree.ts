@@ -35,10 +35,13 @@ const actions = [
  * the top level; with several, one row for each project holding them.
  * `uriOf` turns a project folder into what the action commands take as their
  * argument (a VS Code Uri); the select-environment command takes the folder's path.
+ * `shown` spells a folder for the description of a project's row, such as
+ * relative to the workspace; it defaults to the folder as it is.
  */
 export function projectTree(
   projects: ProjectInfo[],
   uriOf: (folder: string) => unknown = (folder) => folder,
+  shown: (folder: string) => string = (folder) => folder,
 ): TreeNode[] {
   const parts = projects.map((project) => projectNodes(project, uriOf));
   const [only] = parts;
@@ -47,7 +50,7 @@ export function projectTree(
     label: project.id,
     // Two projects can share an id, but not a folder.
     key: project.folder,
-    description: project.folder,
+    description: shown(project.folder),
     icon: "folder",
     children: parts[index],
   }));
