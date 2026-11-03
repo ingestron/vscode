@@ -4,10 +4,15 @@
 // or renamed, or the active editor changes; an edit changes none of them, so
 // no project is opened or scanned for one.
 import { existsSync } from "node:fs";
-import { dirname, join, sep } from "node:path";
+import { dirname, join } from "node:path";
 import * as vscode from "vscode";
 import { limits } from "../features/limits.js";
-import { fileInProject, projectFilesOf, serialised } from "../features/context-keys.js";
+import {
+  fileInProject,
+  inBuildFolder,
+  projectFilesOf,
+  serialised,
+} from "../features/context-keys.js";
 import { previewOf, previewScheme } from "./state.js";
 
 /**
@@ -16,8 +21,10 @@ import { previewOf, previewScheme } from "./state.js";
  */
 export function registerContextKeys(context: vscode.ExtensionContext): void {
   const sent = new Map<string, string>();
+  /** The project folders found by the last scan, so a changed path can be placed in its project. */
+  let folders: string[] = [];
   const update = serialised(async (full) => {
-    if (full) await setProjectKeys(sent);
+    if (full) folders = await setProjectKeys(sent);
     await setKey(sent, "ingestron.inProject", activeInProject());
   });
   let timer: NodeJS.Timeout | undefined;
@@ -25,9 +32,9 @@ export function registerContextKeys(context: vscode.ExtensionContext): void {
     clearTimeout(timer);
     timer = setTimeout(() => update(true), limits.contextKeysSettleMs);
   };
-  // What Apply writes into build/ does not change which files are in a project.
+  // What Apply writes into a project's build/ does not change which files are in a project.
   const outsideBuild = (uri: vscode.Uri) => {
-    if (!uri.fsPath.includes(`${sep}build${sep}`)) rescan();
+    if (!inBuildFolder(uri.fsPath, folders)) rescan();
   };
   const watcher = vscode.workspace.createFileSystemWatcher("**/*.{yaml,yml}");
   context.subscriptions.push(
@@ -68,9 +75,9 @@ async function setKey(
 
 /**
  * The folders that hold a project.yaml and the YAML files inside them, as
- * `resourcePath` spells them, for menus in the Explorer.
+ * `resourcePath` spells them, for menus in the Explorer. Returns the folders.
  */
-async function setProjectKeys(sent: Map<string, string>): Promise<void> {
+async function setProjectKeys(sent: Map<string, string>): Promise<string[]> {
   const manifests = await vscode.workspace.findFiles(
     "**/project.yaml",
     "**/{node_modules,.git}/**",
@@ -81,6 +88,7 @@ async function setProjectKeys(sent: Map<string, string>): Promise<void> {
   await setKey(sent, "ingestron.projectFolders", folders);
   await setKey(sent, "ingestron.hasProjects", folders.length > 0);
   await setKey(sent, "ingestron.projectFiles", projectFilesOf(files, folders));
+  return folders;
 }
 
 /**
