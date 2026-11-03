@@ -56,7 +56,9 @@ class ProjectTree implements vscode.TreeDataProvider<TreeNode>, vscode.Disposabl
   }
 
   async getChildren(node?: TreeNode): Promise<TreeNode[]> {
-    const rows = node ? (node.children ?? []) : projectTree(await this.projects(), vscode.Uri.file);
+    const rows = node
+      ? (node.children ?? [])
+      : projectTree(await this.projects(), vscode.Uri.file, relativeToWorkspace);
     const parent = node ? this.ids.get(node) : "";
     for (const row of rows) this.ids.set(row, rowId(parent ?? "", row));
     return rows;
@@ -98,6 +100,11 @@ class ProjectTree implements vscode.TreeDataProvider<TreeNode>, vscode.Disposabl
     }
     return found;
   }
+}
+
+/** A folder as the Explorer spells it, relative to the workspace; "." for the workspace folder itself. */
+function relativeToWorkspace(folder: string): string {
+  return vscode.workspace.asRelativePath(folder) || ".";
 }
 
 async function findFolders(): Promise<string[]> {
