@@ -171,27 +171,27 @@
       "editor/title": [
         {
           "command": "ingestron.plan",
-          "when": "ingestron.inProject",
+          "when": "resourceScheme == ingestron-generated || resourcePath in ingestron.projectFiles",
           "group": "navigation@1"
         },
         {
           "command": "ingestron.apply",
-          "when": "ingestron.inProject",
+          "when": "resourceScheme == ingestron-generated || resourcePath in ingestron.projectFiles",
           "group": "navigation@2"
         },
         {
           "command": "ingestron.check",
-          "when": "ingestron.inProject",
+          "when": "resourceScheme == ingestron-generated || resourcePath in ingestron.projectFiles",
           "group": "ingestron@1"
         },
         {
           "command": "ingestron.compareEnvironments",
-          "when": "ingestron.inProject",
+          "when": "resourceScheme == ingestron-generated || resourcePath in ingestron.projectFiles",
           "group": "ingestron@2"
         },
         {
           "command": "ingestron.platformRequest",
-          "when": "ingestron.inProject",
+          "when": "resourceScheme == ingestron-generated || resourcePath in ingestron.projectFiles",
           "group": "ingestron@3"
         }
       ],

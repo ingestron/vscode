@@ -1,36 +1,28 @@
-// The context keys the menus in package.json test: whether the active editor is
-// in an Ingestron project, which folders are project folders, and which files
-// are inside one. They change only when files or folders are created, deleted
-// or renamed, or the active editor changes; an edit changes none of them, so
-// no project is opened or scanned for one.
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
+// The context keys the menus in package.json test: which folders are project
+// folders, and which files are inside one. They change only when files or
+// folders are created, deleted or renamed; an edit changes none of them, so no
+// project is opened or scanned for one. Whether an editor shows a project file
+// is left to the menus, which ask it of each editor with `resourcePath`.
+import { dirname } from "node:path";
 import * as vscode from "vscode";
 import { limits } from "../features/limits.js";
-import {
-  fileInProject,
-  inBuildFolder,
-  projectFilesOf,
-  serialised,
-} from "../features/context-keys.js";
-import { previewOf, previewScheme } from "./state.js";
+import { inBuildFolder, projectFilesOf, serialised } from "../features/context-keys.js";
 
 /**
- * Keeps `ingestron.inProject`, `ingestron.projectFolders`, `ingestron.projectFiles` and
+ * Keeps `ingestron.projectFolders`, `ingestron.projectFiles` and
  * `ingestron.hasProjects` up to date. Updates run one at a time, so the last request wins.
  */
 export function registerContextKeys(context: vscode.ExtensionContext): void {
   const sent = new Map<string, string>();
   /** The project folders found by the last scan, so a changed path can be placed in its project. */
   let folders: string[] = [];
-  const update = serialised(async (full) => {
-    if (full) folders = await setProjectKeys(sent);
-    await setKey(sent, "ingestron.inProject", activeInProject());
+  const update = serialised(async () => {
+    folders = await setProjectKeys(sent);
   });
   let timer: NodeJS.Timeout | undefined;
   const rescan = () => {
     clearTimeout(timer);
-    timer = setTimeout(() => update(true), limits.contextKeysSettleMs);
+    timer = setTimeout(() => update(), limits.contextKeysSettleMs);
   };
   // What Apply writes into a project's build/ does not change which files are in a project.
   const outsideBuild = (uri: vscode.Uri) => {
@@ -48,17 +40,8 @@ export function registerContextKeys(context: vscode.ExtensionContext): void {
     vscode.workspace.onDidDeleteFiles(rescan),
     vscode.workspace.onDidRenameFiles(rescan),
     vscode.workspace.onDidChangeWorkspaceFolders(rescan),
-    vscode.window.onDidChangeActiveTextEditor(() => update(false)),
   );
-  update(true);
-}
-
-/** True when the active editor shows a project file or a preview of one's generated files. */
-function activeInProject(): boolean {
-  const uri = vscode.window.activeTextEditor?.document.uri;
-  if (!uri) return false;
-  if (uri.scheme === previewScheme) return existsSync(join(previewOf(uri).folder, "project.yaml"));
-  return uri.scheme === "file" && fileInProject(uri.fsPath);
+  update();
 }
 
 /** Sets a key, unless it already has that value. */
