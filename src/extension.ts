@@ -8,6 +8,7 @@ import { registerDraftContract } from "./vscode/draft-contract.js";
 import { registerFileMoves } from "./vscode/file-moves.js";
 import { registerFixes } from "./vscode/fixes.js";
 import { registerProblems } from "./vscode/problems.js";
+import { registerProjectView } from "./vscode/project-view.js";
 import { registerProviders } from "./vscode/providers.js";
 import { registerReference } from "./vscode/reference.js";
 import { rememberEnvironments } from "./vscode/state.js";
@@ -27,6 +28,7 @@ export function activate(context: vscode.ExtensionContext): void {
   registerFixes(context);
   registerFileMoves(context);
   registerReference(context);
+  registerProjectView(context);
   registerCommands(context, output, refresh);
   registerContextKeys(context);
   registerAutoApply(context, output, refresh);
