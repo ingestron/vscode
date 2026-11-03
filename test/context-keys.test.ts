@@ -3,7 +3,12 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { fileInProject, projectFilesOf, serialised } from "../src/features/context-keys.js";
+import {
+  fileInProject,
+  inBuildFolder,
+  projectFilesOf,
+  serialised,
+} from "../src/features/context-keys.js";
 
 const root = join("/", "work");
 
@@ -36,6 +41,38 @@ describe("projectFilesOf", () => {
 
   it("is empty without projects", () => {
     expect(projectFilesOf([join(root, "a.yaml")], [])).toEqual({});
+  });
+});
+
+describe("inBuildFolder", () => {
+  const retail = join(root, "retail");
+
+  it("is true for a path under the project's build folder", () => {
+    expect(inBuildFolder(join(retail, "build", "dev", "pipeline.yaml"), [retail])).toBe(true);
+  });
+
+  it("is false for a path elsewhere in the project, even one named build deeper down", () => {
+    expect(inBuildFolder(join(retail, "flows", "shop.yaml"), [retail])).toBe(false);
+    expect(inBuildFolder(join(retail, "flows", "build", "shop.yaml"), [retail])).toBe(false);
+  });
+
+  it("is false for a project that sits under a folder named build", () => {
+    const nested = join(root, "build", "retail");
+    expect(inBuildFolder(join(nested, "flows", "shop.yaml"), [nested])).toBe(false);
+    expect(inBuildFolder(join(nested, "project.yaml"), [nested])).toBe(false);
+    // The nested project's own build folder is still left out.
+    expect(inBuildFolder(join(nested, "build", "dev", "x.yaml"), [nested])).toBe(true);
+  });
+
+  it("uses the nearest project when projects are nested", () => {
+    const inner = join(retail, "build", "inner");
+    expect(inBuildFolder(join(inner, "flows", "a.yaml"), [retail, inner])).toBe(false);
+    expect(inBuildFolder(join(inner, "build", "a.yaml"), [retail, inner])).toBe(true);
+  });
+
+  it("is false for a path in no known project, so a new project is noticed", () => {
+    expect(inBuildFolder(join(root, "new", "project.yaml"), [retail])).toBe(false);
+    expect(inBuildFolder(join(root, "build", "new", "project.yaml"), [])).toBe(false);
   });
 });
 
