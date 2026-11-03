@@ -165,6 +165,7 @@ exports.run = async function run() {
   await coreLoop();
   await clickedProject(document);
   await projectView();
+  await projectViewFollows(folder, document);
   await moveToStandard(flow, document);
   await vscode.commands.executeCommand("ingestron.compareEnvironments");
   await until(
@@ -615,6 +616,83 @@ async function projectView() {
     selected(await environments()).map((row) => row.label),
     [first.label],
   );
+}
+
+/**
+ * With two projects the Project view opens the one of the active editor and
+ * folds the other. VS Code does not say which rows are open, so this reads
+ * what the view hands it: each project row's collapsible state and its id.
+ * VS Code keeps a row's state by id, so a changed id is what makes it take the
+ * new state, and an unchanged id is what leaves a row as the person left it.
+ */
+async function projectViewFollows(folder, flow) {
+  const second = path.join(folder, "second");
+  // Inside the workspace, so the view finds it; a second workspace folder would restart VS Code.
+  fs.cpSync(
+    path.join(__dirname, "../../node_modules/@ingestron/cli/project-templates/retail"),
+    second,
+    { recursive: true, filter: (item) => !item.includes(`${path.sep}build`) },
+  );
+  const items = async () =>
+    (await vscode.commands.executeCommand("ingestron.projectItems")).map((item) => ({
+      // The workspace's own folder is described by its whole path, the other by its place in it.
+      folder: item.description === "second" ? "second" : ".",
+      id: item.id,
+      state: item.collapsibleState,
+    }));
+  const open = vscode.TreeItemCollapsibleState.Expanded;
+  const folded = vscode.TreeItemCollapsibleState.Collapsed;
+  const states = (rows) => Object.fromEntries(rows.map((row) => [row.folder, row.state]));
+  const showing = (file, expected, what) =>
+    vscode.window.showTextDocument(vscode.Uri.file(file)).then(() =>
+      until(async () => {
+        const rows = await items();
+        return rows.length === 2 && JSON.stringify(states(rows)) === JSON.stringify(expected);
+      }, what),
+    );
+  const first = { ".": open, second: folded };
+  const other = { ".": folded, second: open };
+  try {
+    await until(async () => (await items()).length === 2, "the Project view to list both projects");
+    await showing(flow.uri.fsPath, first, "the first project open and the second folded");
+    const before = await items();
+
+    // A file of the second project: it opens and the first folds, under new ids.
+    const secondFlow = path.join(second, "flows/shop.yaml");
+    await showing(secondFlow, other, "the second project to open and the first to fold");
+    const after = await items();
+    for (const index of [0, 1]) assert.notEqual(after[index].id, before[index].id);
+
+    // Nothing changes for another file of the same project, a choice of
+    // environment, a file outside every project, or no editor at all.
+    const outside = path.join(
+      fs.mkdtempSync(path.join(require("node:os").tmpdir(), "ingestron-")),
+      "notes.md",
+    );
+    fs.writeFileSync(outside, "Not in a project.\n");
+    await showing(path.join(second, "connections/shop.yaml"), other, "the same project");
+    await vscode.commands.executeCommand("ingestron.selectEnvironment", second, "prod");
+    await vscode.commands.executeCommand("ingestron.selectEnvironment", second, "dev");
+    await vscode.window.showTextDocument(vscode.Uri.file(outside));
+    await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+    await wait(1000);
+    assert.deepEqual(await items(), after, "rows kept their ids and states");
+
+    // Back to the first project: it opens again and the second folds.
+    await showing(flow.uri.fsPath, first, "the first project to open again");
+  } finally {
+    await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+    // The manifest first: deleting a folder does not always report the files inside it.
+    fs.rmSync(path.join(second, "project.yaml"), { force: true });
+    await wait(500);
+    fs.rmSync(second, { recursive: true, force: true });
+  }
+  await until(
+    async () =>
+      (await vscode.commands.executeCommand("ingestron.projectRows"))[0]?.label === "Environments",
+    "the Project view to list one project again",
+  );
+  await vscode.window.showTextDocument(flow);
 }
 
 /** Picks `choice` in the next quick pick, as a person would. */

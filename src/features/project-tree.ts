@@ -1,7 +1,7 @@
 // What the Project view shows: for each project its environments (the chosen
 // one marked; clicking one selects it) and the actions that run on it.
 
-import { basename } from "node:path";
+import { basename, sep } from "node:path";
 
 /**
  * True for a project.yaml. It is the one file whose edits change what the
@@ -22,6 +22,8 @@ export interface TreeNode {
   key?: string;
   command?: { id: string; args: unknown[] };
   children?: TreeNode[];
+  /** The project folder a row stands for. Only the rows of several projects have one. */
+  folder?: string;
 }
 
 /** A project as the view needs it. `chosen` is the environment commands use now. */
@@ -61,6 +63,7 @@ export function projectTree(
     label: project.id,
     // Two projects can share an id, but not a folder.
     key: project.folder,
+    folder: project.folder,
     description: shown(project.folder),
     icon: "folder",
     children: parts[index],
@@ -98,4 +101,46 @@ function environmentNode(project: ProjectInfo, name: string): TreeNode {
 /** A row's identity in the tree: its parent's, then its own key. Unique among all rows. */
 export function rowId(parent: string, node: TreeNode): string {
   return `${parent}/${node.key ?? node.label}`;
+}
+
+/** How a row starts out in the tree. */
+export type Fold = "expanded" | "collapsed" | "none";
+
+/**
+ * How a row starts: a row without children has nothing to fold; of several
+ * projects only the active one is open, and everything else is open as it is
+ * shown. `active` is the folder of the project being worked on.
+ */
+export function foldOf(node: TreeNode, active: string | undefined): Fold {
+  if (!node.children) return "none";
+  if (node.folder === undefined || node.folder === active) return "expanded";
+  return "collapsed";
+}
+
+/**
+ * The folder of the project that holds `file` (the innermost, when projects
+ * are nested), or undefined when none does. Compares paths and reads nothing.
+ */
+export function owningFolder(folders: string[], file: string): string | undefined {
+  const holders = folders.filter(
+    (folder) => file === folder || file.startsWith(folder.endsWith(sep) ? folder : folder + sep),
+  );
+  return holders.sort((a, b) => b.length - a.length)[0];
+}
+
+/**
+ * The project the view follows after the active editor shows `file`: that
+ * file's project, else the one followed so far (a file outside every project,
+ * or no editor, changes nothing) as long as it is still one of `folders`.
+ * With fewer than two projects there is nothing to follow.
+ */
+export function followedFolder(
+  folders: string[],
+  file: string | undefined,
+  followed: string | undefined,
+): string | undefined {
+  if (folders.length < 2) return undefined;
+  const holder = file === undefined ? undefined : owningFolder(folders, file);
+  if (holder !== undefined) return holder;
+  return followed !== undefined && folders.includes(followed) ? followed : undefined;
 }
