@@ -7,6 +7,8 @@ export interface TreeNode {
   description?: string;
   /** A codicon name, without the `$(…)`. */
   icon: string;
+  /** Tells rows with the same label apart among their siblings; the label when absent. */
+  key?: string;
   command?: { id: string; args: unknown[] };
   children?: TreeNode[];
 }
@@ -43,6 +45,8 @@ export function projectTree(
   if (only && parts.length === 1) return only;
   return projects.map((project, index) => ({
     label: project.id,
+    // Two projects can share an id, but not a folder.
+    key: project.folder,
     description: project.folder,
     icon: "folder",
     children: parts[index],
@@ -75,4 +79,9 @@ function environmentNode(project: ProjectInfo, name: string): TreeNode {
     icon: selected ? "check" : "circle-outline",
     command: { id: "ingestron.selectEnvironment", args: [project.folder, name] },
   };
+}
+
+/** A row's identity in the tree: its parent's, then its own key. Unique among all rows. */
+export function rowId(parent: string, node: TreeNode): string {
+  return `${parent}/${node.key ?? node.label}`;
 }

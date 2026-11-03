@@ -1,6 +1,7 @@
 // The parts of the context keys that need no VS Code: which files belong to a
 // project, and a runner that applies updates one at a time.
 import { relative, sep } from "node:path";
+import { inProject, projectFolderOf } from "@ingestron/authoring";
 
 /**
  * The YAML files that lie inside a project folder, outside its build folder,
@@ -50,4 +51,14 @@ export function serialised(work: (full: boolean) => Promise<void>): (full: boole
     wanted = { full: full || (wanted?.full ?? false) };
     if (!running) void drain();
   };
+}
+
+/**
+ * True when the path is a file of a project. It looks only at the folders above
+ * the path, and does not open the project, so it is cheap to ask whenever the
+ * active editor changes.
+ */
+export function fileInProject(path: string): boolean {
+  const folder = projectFolderOf(path);
+  return folder !== undefined && inProject(folder, path) !== undefined;
 }

@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { projectTree, type TreeNode } from "../src/features/project-tree.js";
+import { projectTree, rowId, type TreeNode } from "../src/features/project-tree.js";
 
 const retail = {
   folder: "/work/retail",
@@ -104,6 +104,28 @@ describe("projectTree", () => {
 
   it("is empty without projects", () => {
     expect(projectTree([])).toEqual([]);
+  });
+});
+
+describe("rowId", () => {
+  const all = (nodes: TreeNode[], parent = ""): string[] =>
+    nodes.flatMap((node) => {
+      const id = rowId(parent, node);
+      return [id, ...all(node.children ?? [], id)];
+    });
+
+  it("gives two projects with the same id distinct row ids, all the way down", () => {
+    const nodes = projectTree([
+      { folder: "/work/a/retail", id: "retail", environments: ["dev"] },
+      { folder: "/work/b/retail", id: "retail", environments: ["dev"] },
+    ]);
+    const ids = all(nodes);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("gives the rows of one project distinct ids", () => {
+    const ids = all(projectTree([retail]));
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });
 
