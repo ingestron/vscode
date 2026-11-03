@@ -3,6 +3,13 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+// Previews of generated files have no project file behind them, so the buttons
+// recognise them by their scheme, which the extension names once in state.ts.
+const previewScheme = /export const previewScheme = "([^"]+)"/.exec(
+  readFileSync(join(import.meta.dirname, "..", "src", "vscode", "state.ts"), "utf8"),
+)?.[1];
+const editorTitleWhen = `resourceScheme == ${previewScheme} || resourcePath in ingestron.projectFiles`;
+
 interface Entry {
   command: string;
   when?: string;
@@ -45,6 +52,15 @@ describe("Explorer menu", () => {
 });
 
 describe("editor title menu", () => {
+  it("shows the buttons for a project file or a preview of generated files, in the editor's own group", () => {
+    expect(previewScheme).toBe("ingestron-generated");
+    for (const entry of menus["editor/title"]!) {
+      expect(entry.when, entry.command).toBe(editorTitleWhen);
+      // Only per-editor keys: a global key would follow the active group into a split.
+      expect(entry.when, entry.command).not.toContain("ingestron.inProject");
+    }
+  });
+
   it("shows Plan and Apply as buttons with icons, only in a project", () => {
     for (const [command, icon] of [
       ["ingestron.plan", "$(checklist)"],
@@ -52,7 +68,7 @@ describe("editor title menu", () => {
     ] as const) {
       const entry = named("editor/title", command);
       expect(entry?.group, command).toMatch(/^navigation@\d$/);
-      expect(entry?.when, command).toBe("ingestron.inProject");
+      expect(entry?.when, command).toBe(editorTitleWhen);
       expect(commands.find((item) => item.command === command)?.icon, command).toBe(icon);
     }
   });
@@ -65,7 +81,7 @@ describe("editor title menu", () => {
     ]) {
       const entry = named("editor/title", command);
       expect(entry?.group, command).toMatch(/^ingestron@\d$/);
-      expect(entry?.when, command).toBe("ingestron.inProject");
+      expect(entry?.when, command).toBe(editorTitleWhen);
     }
   });
 });

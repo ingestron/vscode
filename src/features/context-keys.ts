@@ -1,7 +1,6 @@
 // The parts of the context keys that need no VS Code: which files belong to a
 // project, and a runner that applies updates one at a time.
 import { isAbsolute, relative, sep } from "node:path";
-import { inProject, projectFolderOf } from "@ingestron/authoring";
 
 /**
  * The YAML files that lie inside a project folder, outside its build folder,
@@ -48,19 +47,18 @@ export function inBuildFolder(path: string, folders: string[]): boolean {
 /**
  * Wraps an update so that two never run at once and the last request always
  * has the final say: a request made while one runs makes exactly one more run
- * after it, and a full request is not lost to a later partial one. Without
- * this, a slow update could finish after a newer one and leave stale keys.
+ * after it. Without this, a slow update could finish after a newer one and
+ * leave stale keys.
  */
-export function serialised(work: (full: boolean) => Promise<void>): (full: boolean) => void {
-  let wanted: { full: boolean } | undefined;
+export function serialised(work: () => Promise<void>): () => void {
+  let again = false;
   let running = false;
   const drain = async () => {
     running = true;
     try {
-      while (wanted) {
-        const { full } = wanted;
-        wanted = undefined;
-        await work(full).catch((error: unknown) =>
+      while (again) {
+        again = false;
+        await work().catch((error: unknown) =>
           console.error("ingestron: context keys could not be updated", error),
         );
       }
@@ -68,18 +66,8 @@ export function serialised(work: (full: boolean) => Promise<void>): (full: boole
       running = false;
     }
   };
-  return (full) => {
-    wanted = { full: full || (wanted?.full ?? false) };
+  return () => {
+    again = true;
     if (!running) void drain();
   };
-}
-
-/**
- * True when the path is a file of a project. It looks only at the folders above
- * the path, and does not open the project, so it is cheap to ask whenever the
- * active editor changes.
- */
-export function fileInProject(path: string): boolean {
-  const folder = projectFolderOf(path);
-  return folder !== undefined && inProject(folder, path) !== undefined;
 }
