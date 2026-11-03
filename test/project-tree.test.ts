@@ -2,7 +2,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { projectTree, rowId, type TreeNode } from "../src/features/project-tree.js";
+import {
+  isProjectManifest,
+  projectTree,
+  rowId,
+  type TreeNode,
+} from "../src/features/project-tree.js";
 
 const retail = {
   folder: "/work/retail",
@@ -115,6 +120,20 @@ describe("projectTree", () => {
 
   it("is empty without projects", () => {
     expect(projectTree([])).toEqual([]);
+  });
+});
+
+describe("isProjectManifest", () => {
+  it("is true for a project.yaml anywhere, which holds the environments the view lists", () => {
+    expect(isProjectManifest("/work/retail/project.yaml")).toBe(true);
+    expect(isProjectManifest("project.yaml")).toBe(true);
+  });
+
+  it("is false for every other file, so an edit elsewhere does not redraw the view", () => {
+    expect(isProjectManifest("/work/retail/flows/shop.yaml")).toBe(false);
+    expect(isProjectManifest("/work/retail/my-project.yaml")).toBe(false);
+    expect(isProjectManifest("/work/retail/project.yaml/notes.md")).toBe(false);
+    expect(isProjectManifest("extension-output-ingestron.ingestron-#1-Ingestron")).toBe(false);
   });
 });
 

@@ -38,6 +38,9 @@ export function rememberEnvironments(memento: vscode.Memento): void {
 const changes = new vscode.EventEmitter<void>();
 /** Fires when any project's files or chosen environment change. */
 export const onProjectChange = changes.event;
+const environmentChanges = new vscode.EventEmitter<void>();
+/** Fires when an environment is chosen for a project; unlike `onProjectChange`, not on every edit. */
+export const onEnvironmentChange = environmentChanges.event;
 /** One snapshot per project folder, so features share parsing and resolution until something changes. */
 const projects = new Map<string, Project>();
 
@@ -133,6 +136,7 @@ export function chooseEnvironment(project: Project, environment: string): void {
   environments.set(project.folder, environment);
   void memory?.update(environmentsKey, Object.fromEntries(environments));
   changes.fire();
+  environmentChanges.fire();
 }
 
 /** A VS Code range for offsets in a project file. */

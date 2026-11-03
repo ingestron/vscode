@@ -1,6 +1,17 @@
 // What the Project view shows: for each project its environments (the chosen
 // one marked; clicking one selects it) and the actions that run on it.
 
+import { basename } from "node:path";
+
+/**
+ * True for a project.yaml. It is the one file whose edits change what the
+ * view shows (the project's environments), so the view refreshes for it and
+ * not for every edit in the workspace.
+ */
+export function isProjectManifest(path: string): boolean {
+  return basename(path) === "project.yaml";
+}
+
 /** One row of the Project view. A row with a `command` runs it when clicked. */
 export interface TreeNode {
   label: string;

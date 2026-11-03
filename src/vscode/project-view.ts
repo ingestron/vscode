@@ -5,8 +5,14 @@ import { basename, dirname, join } from "node:path";
 import * as vscode from "vscode";
 import { parse } from "yaml";
 import { limits } from "../features/limits.js";
-import { projectTree, rowId, type ProjectInfo, type TreeNode } from "../features/project-tree.js";
-import { environmentOf, onProjectChange, projectAt } from "./state.js";
+import {
+  isProjectManifest,
+  projectTree,
+  rowId,
+  type ProjectInfo,
+  type TreeNode,
+} from "../features/project-tree.js";
+import { environmentOf, onEnvironmentChange, projectAt } from "./state.js";
 
 const exclude = "**/{build,node_modules,.git}/**";
 
@@ -26,7 +32,13 @@ export function registerProjectView(context: vscode.ExtensionContext): void {
     vscode.window.registerTreeDataProvider("ingestron.project", provider),
     // Not in the Command Palette: the integration test reads the rows through it.
     vscode.commands.registerCommand("ingestron.projectRows", () => provider.getChildren()),
-    onProjectChange(changed),
+    // The view shows only the folders, the environments and the chosen one, so it
+    // follows those and not every edit (which includes text in the Output channel).
+    onEnvironmentChange(changed),
+    manifests.onDidChange(changed),
+    vscode.workspace.onDidChangeTextDocument((event) => {
+      if (isProjectManifest(event.document.uri.fsPath)) changed();
+    }),
     // A project appears, goes or moves; the list of folders is read again.
     manifests.onDidCreate(() => provider.refresh(true)),
     manifests.onDidDelete(() => provider.refresh(true)),
