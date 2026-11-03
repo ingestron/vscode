@@ -158,6 +158,22 @@ describe("referenceHtml for a warning", () => {
   });
 });
 
+describe("referenceHtml for information", () => {
+  it("marks it in the information colour", () => {
+    const html = referenceHtml(
+      {
+        title: "path",
+        subtitle: "Setting of files",
+        problems: [
+          { code: "ENVVAR_MISSING", severity: "information", message: "Not set.", fixes: [] },
+        ],
+      },
+      (path) => path,
+    );
+    expect(html).toContain('<div class="problem information">');
+  });
+});
+
 describe("referenceHtml while browsing the reference", () => {
   it("shows Back and Open in browser above the entry", () => {
     const html = referenceHtml(

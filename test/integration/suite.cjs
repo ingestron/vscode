@@ -160,6 +160,7 @@ exports.run = async function run() {
   await codeFileMoves(folder);
   await codeTooltip(folder);
   await dataProducts(folder);
+  await unsetVariable(folder);
   await symbols(folder, flow);
   await coreLoop();
   await clickedProject(document);
@@ -735,5 +736,42 @@ async function quickFix(flow, range) {
   await until(
     () => vscode.languages.getDiagnostics(flow).every((item) => codeOf(item) !== "BROKEN_LINK"),
     "the BROKEN_LINK problem to clear",
+  );
+}
+
+/**
+ * An unset ${envvar:…} is information, not an error, and naming it in .env
+ * clears it. The connection and .env are restored after.
+ */
+async function unsetVariable(folder) {
+  const connection = vscode.Uri.file(path.join(folder, "connections/shop.yaml"));
+  const env = path.join(folder, ".env");
+  const kept = fs.readFileSync(connection.fsPath, "utf8");
+  fs.writeFileSync(
+    connection.fsPath,
+    kept.replace("${values.storage}/shop", "${envvar:INGT_IT_UNSET}/shop"),
+  );
+  const unset = (item) => codeOf(item) === "ENVVAR_MISSING";
+  const found = await until(
+    () => vscode.languages.getDiagnostics(connection).find(unset),
+    "the ENVVAR_MISSING information",
+  );
+  assert.equal(found.severity, vscode.DiagnosticSeverity.Information);
+  assert.match(found.message, /INGT_IT_UNSET isn't set; add it to \.env/);
+  const errors = vscode.languages
+    .getDiagnostics()
+    .flatMap(([, items]) => items)
+    .filter((item) => item.severity === vscode.DiagnosticSeverity.Error);
+  assert.deepEqual(errors.map(codeOf), []);
+  fs.writeFileSync(env, "INGT_IT_UNSET=abfss://landing@retaildev.dfs.core.windows.net\n");
+  await until(
+    () => !vscode.languages.getDiagnostics(connection).some(unset),
+    "the information to clear after .env names the variable",
+  );
+  fs.rmSync(env);
+  fs.writeFileSync(connection.fsPath, kept);
+  await until(
+    () => vscode.languages.getDiagnostics(connection).length === 0,
+    "the connection's problems to clear",
   );
 }

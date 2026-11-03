@@ -20,6 +20,7 @@ dd { margin: 0; }
 a { color: var(--vscode-textLink-foreground); }
 .problem { border-left: 3px solid var(--vscode-editorError-foreground); padding: 2px 0 2px 8px; margin: 8px 0; }
 .problem.warning { border-left-color: var(--vscode-editorWarning-foreground); }
+.problem.information { border-left-color: var(--vscode-editorInfo-foreground); }
 .empty { color: var(--vscode-descriptionForeground); }
 .nav { display: flex; justify-content: space-between; gap: 8px; margin: 6px 0 2px; font-size: 0.9em; }
 `;
@@ -110,7 +111,7 @@ function problemHtml(problem: ProblemEntry, link: (path: string) => string): str
     ? `<a href="${escape(link(problem.docs))}">${escape(problem.code)}</a>`
     : escape(problem.code);
   return [
-    `<div class="problem${problem.severity === "warning" ? " warning" : ""}">`,
+    `<div class="problem${problem.severity === "error" ? "" : ` ${problem.severity}`}">`,
     `<p><strong>${code}</strong>: ${escape(problem.message)}</p>`,
     // The problem's own hint says more than its code's general meaning.
     problem.hint && `<p>${inline(problem.hint, link)}</p>`,
