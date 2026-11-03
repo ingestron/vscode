@@ -102,6 +102,17 @@ describe("projectTree", () => {
     expect(nodes[1]?.children?.[0]?.children?.[0]?.command?.args).toEqual(["/work/sales", "dev"]);
   });
 
+  it("describes each of several projects by the path the caller makes of its folder", () => {
+    const nodes = projectTree(
+      [retail, { folder: "/work/sales", id: "sales", environments: ["dev"] }],
+      uriOf,
+      (folder) => folder.replace("/work/", ""),
+    );
+    expect(nodes.map((node) => node.description)).toEqual(["retail", "sales"]);
+    // The key that tells rows apart stays the full folder.
+    expect(nodes.map((node) => node.key)).toEqual(["/work/retail", "/work/sales"]);
+  });
+
   it("is empty without projects", () => {
     expect(projectTree([])).toEqual([]);
   });
