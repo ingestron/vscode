@@ -1,14 +1,7 @@
 // The context keys' pure parts: which files belong to a project, and updates that never overlap.
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import {
-  fileInProject,
-  inBuildFolder,
-  projectFilesOf,
-  serialised,
-} from "../src/features/context-keys.js";
+import { inBuildFolder, projectFilesOf, serialised } from "../src/features/context-keys.js";
 
 const root = join("/", "work");
 
@@ -88,20 +81,20 @@ describe("serialised", () => {
     const log: string[] = [];
     const gates = [deferred(), deferred(), deferred()];
     let run = 0;
-    const request = serialised(async (full) => {
+    const request = serialised(async () => {
       const mine = run++;
-      log.push(`start ${mine} ${full ? "full" : "editor"}`);
+      log.push(`start ${mine}`);
       await gates[mine]!.done;
       log.push(`end ${mine}`);
     });
-    request(false);
-    request(false);
-    request(true);
+    request();
+    request();
+    request();
     await tick();
-    expect(log).toEqual(["start 0 editor"]);
+    expect(log).toEqual(["start 0"]);
     gates[0]!.finish();
     await tick();
-    expect(log).toEqual(["start 0 editor", "end 0", "start 1 full"]);
+    expect(log).toEqual(["start 0", "end 0", "start 1"]);
     gates[1]!.finish();
     await tick();
     expect(log.at(-1)).toBe("end 1");
@@ -114,22 +107,10 @@ describe("serialised", () => {
       calls += 1;
       if (calls === 1) throw new Error("boom");
     });
-    request(true);
+    request();
     await tick();
-    request(true);
+    request();
     await tick();
     expect(calls).toBe(2);
-  });
-});
-
-describe("fileInProject", () => {
-  it("is true for a file inside a project folder, and false outside any", () => {
-    const base = mkdtempSync(join(tmpdir(), "ingestron-keys-"));
-    mkdirSync(join(base, "retail", "flows"), { recursive: true });
-    mkdirSync(join(base, "elsewhere"));
-    writeFileSync(join(base, "retail", "project.yaml"), "id: retail\n");
-    expect(fileInProject(join(base, "retail", "project.yaml"))).toBe(true);
-    expect(fileInProject(join(base, "retail", "flows", "shop.yaml"))).toBe(true);
-    expect(fileInProject(join(base, "elsewhere", "chart.yaml"))).toBe(false);
   });
 });
