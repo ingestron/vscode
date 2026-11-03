@@ -1,6 +1,6 @@
 // The parts of the context keys that need no VS Code: which files belong to a
 // project, and a runner that applies updates one at a time.
-import { relative, sep } from "node:path";
+import { isAbsolute, relative, sep } from "node:path";
 import { inProject, projectFolderOf } from "@ingestron/authoring";
 
 /**
@@ -19,9 +19,30 @@ export function projectFilesOf(files: string[], folders: string[]): Record<strin
 }
 
 function isProjectFile(folder: string, file: string): boolean {
-  const inside = relative(folder, file);
-  if (inside === "" || inside.startsWith("..")) return false;
-  return inside.split(sep)[0] !== "build";
+  const inside = insidePath(folder, file);
+  return inside !== undefined && inside.split(sep)[0] !== "build";
+}
+
+/** The path relative to the folder, or undefined when it is not strictly inside it. */
+function insidePath(folder: string, path: string): string | undefined {
+  const inside = relative(folder, path);
+  return inside === "" || inside.startsWith("..") || isAbsolute(inside) ? undefined : inside;
+}
+
+/**
+ * True when the path is in the build folder of the nearest project folder
+ * that holds it. Only the part below the project folder counts, so a
+ * workspace that sits under a folder named `build` is not mistaken for build
+ * output. A path in no known project is not build output: it may be a new
+ * project.
+ */
+export function inBuildFolder(path: string, folders: string[]): boolean {
+  let nearest: string | undefined;
+  for (const folder of folders)
+    if (insidePath(folder, path) !== undefined && folder.length > (nearest?.length ?? -1))
+      nearest = folder;
+  const inside = nearest === undefined ? undefined : insidePath(nearest, path);
+  return inside !== undefined && inside.split(sep)[0] === "build";
 }
 
 /**
