@@ -1,7 +1,9 @@
 // The context keys' pure parts: which files belong to a project, and updates that never overlap.
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { projectFilesOf, serialised } from "../src/features/context-keys.js";
+import { fileInProject, projectFilesOf, serialised } from "../src/features/context-keys.js";
 
 const root = join("/", "work");
 
@@ -80,5 +82,17 @@ describe("serialised", () => {
     request(true);
     await tick();
     expect(calls).toBe(2);
+  });
+});
+
+describe("fileInProject", () => {
+  it("is true for a file inside a project folder, and false outside any", () => {
+    const base = mkdtempSync(join(tmpdir(), "ingestron-keys-"));
+    mkdirSync(join(base, "retail", "flows"), { recursive: true });
+    mkdirSync(join(base, "elsewhere"));
+    writeFileSync(join(base, "retail", "project.yaml"), "id: retail\n");
+    expect(fileInProject(join(base, "retail", "project.yaml"))).toBe(true);
+    expect(fileInProject(join(base, "retail", "flows", "shop.yaml"))).toBe(true);
+    expect(fileInProject(join(base, "elsewhere", "chart.yaml"))).toBe(false);
   });
 });
