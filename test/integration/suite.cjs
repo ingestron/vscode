@@ -162,6 +162,7 @@ exports.run = async function run() {
   await dataProducts(folder);
   await symbols(folder, flow);
   await coreLoop();
+  await clickedProject(document);
   await moveToStandard(flow, document);
   await vscode.commands.executeCommand("ingestron.compareEnvironments");
   await until(
@@ -525,6 +526,53 @@ async function coreLoop() {
         .every(([, items]) => items.length === 0),
     "no problems left in the new project",
   );
+}
+
+/** The text of the Output panel's channels, which Ingestron's commands write to. */
+const outputText = () =>
+  vscode.workspace.textDocuments
+    .filter((item) => item.uri.scheme === "output")
+    .map((item) => item.getText())
+    .join("\n");
+
+/**
+ * A second project, with environments of its own: Check run from its
+ * project.yaml, or from its folder, runs there while a file of the first
+ * project is the active editor.
+ */
+async function clickedProject(active) {
+  // A fresh copy each time: the extension reads a project's environments once per snapshot.
+  const copy = (environment) => {
+    const folder = path.join(
+      fs.mkdtempSync(path.join(require("node:os").tmpdir(), "ingestron-second-")),
+      "retail",
+    );
+    fs.cpSync(
+      path.join(__dirname, "../../node_modules/@ingestron/cli/project-templates/retail"),
+      folder,
+      { recursive: true, filter: (item) => !item.includes(`${path.sep}build`) },
+    );
+    const manifest = path.join(folder, "project.yaml");
+    fs.writeFileSync(
+      manifest,
+      fs.readFileSync(manifest, "utf8").replace(/^ {2}dev: \{\}/m, `  ${environment}: {}`),
+    );
+    return folder;
+  };
+  const checkedIn = async (target, environment, what) => {
+    await vscode.window.showTextDocument(active);
+    await vscode.commands.executeCommand("ingestron.check", target);
+    await until(() => outputText().includes(`${environment}: `), what);
+    assert.doesNotMatch(outputText(), /^dev: /m, `${what} ran in the active editor's project`);
+  };
+  // Without a clicked file, the active editor's project runs.
+  await vscode.window.showTextDocument(active);
+  await vscode.commands.executeCommand("ingestron.check");
+  await until(() => /^dev: /m.test(outputText()), "Check from the active editor");
+  const byFile = copy("uat");
+  await checkedIn(vscode.Uri.file(path.join(byFile, "project.yaml")), "uat", "Check from a file");
+  const byFolder = copy("stage");
+  await checkedIn(vscode.Uri.file(byFolder), "stage", "Check from a project folder");
 }
 
 /** Picks `choice` in the next quick pick, as a person would. */
