@@ -15,7 +15,7 @@ const any = new Proxy(function () {}, {
 const names = ["commands", "languages", "window", "workspace", "Uri", "Range", "Location", "Hover",
   "MarkdownString", "CompletionItem", "CompletionItemKind", "Diagnostic", "DiagnosticSeverity",
   "StatusBarAlignment", "WorkspaceEdit", "CodeAction", "CodeActionKind", "SnippetString",
-  "EventEmitter", "InlayHint", "CodeLens", "SymbolKind", "DocumentSymbol", "SymbolInformation"];
+  "EventEmitter", "InlayHint", "CodeLens", "SymbolKind", "DocumentSymbol", "SymbolInformation", "ExtensionMode"];
 module.exports = Object.fromEntries(names.map((name) => [name, any]));
 `;
 
@@ -26,7 +26,7 @@ describe("bundle", () => {
     writeFileSync(join(modules, "vscode", "index.js"), stub);
     const script = `
       const extension = require(${JSON.stringify(join(import.meta.dirname, "../dist/extension.cjs"))});
-      const context = { subscriptions: [], extension: { id: "ingestron.ingestron-vscode" }, workspaceState: { get: () => undefined, update: () => undefined } };
+      const context = { subscriptions: [], extensionMode: 1, extension: { id: "ingestron.ingestron-vscode" }, workspaceState: { get: () => undefined, update: () => undefined } };
       extension.activate(context);
       console.log("activated");
     `;

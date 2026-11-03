@@ -25,13 +25,16 @@ export function registerProjectView(context: vscode.ExtensionContext): void {
     timer = setTimeout(() => provider.refresh(), limits.projectViewSettleMs);
   };
   const manifests = vscode.workspace.createFileSystemWatcher("**/project.yaml");
+  // Only the integration test reads the rows this way, so no other run has the command.
+  if (context.extensionMode === vscode.ExtensionMode.Test)
+    context.subscriptions.push(
+      vscode.commands.registerCommand("ingestron.projectRows", () => provider.getChildren()),
+    );
   context.subscriptions.push(
     provider,
     manifests,
     { dispose: () => clearTimeout(timer) },
     vscode.window.registerTreeDataProvider("ingestron.project", provider),
-    // Not in the Command Palette: the integration test reads the rows through it.
-    vscode.commands.registerCommand("ingestron.projectRows", () => provider.getChildren()),
     // The view shows only the folders, the environments and the chosen one, so it
     // follows those and not every edit (which includes text in the Output channel).
     onEnvironmentChange(changed),
