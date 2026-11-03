@@ -4,12 +4,11 @@
 import { basename, dirname, join } from "node:path";
 import * as vscode from "vscode";
 import { parse } from "yaml";
+import { limits } from "../features/limits.js";
 import { projectTree, rowId, type ProjectInfo, type TreeNode } from "../features/project-tree.js";
 import { environmentOf, onProjectChange, projectAt } from "./state.js";
 
 const exclude = "**/{build,node_modules,.git}/**";
-/** How long changes settle before the view is rebuilt, so typing does not redraw it each key. */
-const settle = 150;
 
 /** Registers the Project view and keeps it up to date. */
 export function registerProjectView(context: vscode.ExtensionContext): void {
@@ -17,7 +16,7 @@ export function registerProjectView(context: vscode.ExtensionContext): void {
   let timer: NodeJS.Timeout | undefined;
   const changed = () => {
     clearTimeout(timer);
-    timer = setTimeout(() => provider.refresh(), settle);
+    timer = setTimeout(() => provider.refresh(), limits.projectViewSettleMs);
   };
   const manifests = vscode.workspace.createFileSystemWatcher("**/project.yaml");
   context.subscriptions.push(
@@ -102,7 +101,11 @@ class ProjectTree implements vscode.TreeDataProvider<TreeNode>, vscode.Disposabl
 }
 
 async function findFolders(): Promise<string[]> {
-  const manifests = await vscode.workspace.findFiles("**/project.yaml", exclude);
+  const manifests = await vscode.workspace.findFiles(
+    "**/project.yaml",
+    exclude,
+    limits.projectsPerWorkspace,
+  );
   return manifests.map((manifest) => dirname(manifest.fsPath)).sort();
 }
 
