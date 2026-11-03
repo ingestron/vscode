@@ -6,14 +6,9 @@
 import { existsSync } from "node:fs";
 import { dirname, join, sep } from "node:path";
 import * as vscode from "vscode";
+import { limits } from "../features/limits.js";
 import { fileInProject, projectFilesOf, serialised } from "../features/context-keys.js";
 import { previewOf, previewScheme } from "./state.js";
-
-/** How long structural changes settle before the files are listed again. */
-const settle = 200;
-/** The most YAML files read from one project; a project with more is keyed for its first ones only. */
-const scanLimit = 5000;
-const projectLimit = 1000;
 
 /**
  * Keeps `ingestron.inProject`, `ingestron.projectFolders`, `ingestron.projectFiles` and
@@ -28,7 +23,7 @@ export function registerContextKeys(context: vscode.ExtensionContext): void {
   let timer: NodeJS.Timeout | undefined;
   const rescan = () => {
     clearTimeout(timer);
-    timer = setTimeout(() => update(true), settle);
+    timer = setTimeout(() => update(true), limits.contextKeysSettleMs);
   };
   // What Apply writes into build/ does not change which files are in a project.
   const outsideBuild = (uri: vscode.Uri) => {
@@ -79,7 +74,7 @@ async function setProjectKeys(sent: Map<string, string>): Promise<void> {
   const manifests = await vscode.workspace.findFiles(
     "**/project.yaml",
     "**/{node_modules,.git}/**",
-    projectLimit,
+    limits.projectsPerWorkspace,
   );
   const folders = manifests.map((manifest) => dirname(manifest.fsPath));
   const files = (await Promise.all(folders.map(yamlFilesIn))).flat();
@@ -90,7 +85,7 @@ async function setProjectKeys(sent: Map<string, string>): Promise<void> {
 
 /**
  * The YAML files of one project, apart from its build folder and the folders
- * of dependencies. The search is bounded by `scanLimit`: a project with more
+ * of dependencies. The search is bounded by `limits.yamlFilesPerProject`: a project with more
  * files keeps menus on the first ones found and none on the rest, because a
  * `when` clause cannot match a folder's files as a group.
  */
@@ -98,9 +93,11 @@ async function yamlFilesIn(folder: string): Promise<string[]> {
   const found = await vscode.workspace.findFiles(
     new vscode.RelativePattern(folder, "**/*.{yaml,yml}"),
     new vscode.RelativePattern(folder, "{build/**,**/node_modules/**,**/.git/**}"),
-    scanLimit,
+    limits.yamlFilesPerProject,
   );
-  if (found.length >= scanLimit)
-    console.warn(`ingestron: ${folder} has over ${scanLimit} YAML files; menus cover the first.`);
+  if (found.length >= limits.yamlFilesPerProject)
+    console.warn(
+      `ingestron: ${folder} has over ${limits.yamlFilesPerProject} YAML files; menus cover the first.`,
+    );
   return found.map((uri) => uri.fsPath);
 }
