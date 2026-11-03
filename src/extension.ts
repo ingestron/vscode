@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import { registerAnnotations } from "./vscode/annotations.js";
 import { registerAutoApply } from "./vscode/auto-apply.js";
 import { registerCommands } from "./vscode/commands.js";
+import { registerContextKeys } from "./vscode/context-keys.js";
 import { registerDraftContract } from "./vscode/draft-contract.js";
 import { registerFileMoves } from "./vscode/file-moves.js";
 import { registerFixes } from "./vscode/fixes.js";
@@ -27,6 +28,7 @@ export function activate(context: vscode.ExtensionContext): void {
   registerFileMoves(context);
   registerReference(context);
   registerCommands(context, output, refresh);
+  registerContextKeys(context);
   registerAutoApply(context, output, refresh);
   registerWizard(context, output);
   registerDraftContract(context);

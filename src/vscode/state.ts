@@ -1,6 +1,7 @@
 // What the extension keeps: the project for a file (with open editors read
 // before the disk) and the environment chosen for each project, which is
 // remembered in the workspace so it is the same after a restart.
+import { statSync } from "node:fs";
 import { join, sep } from "node:path";
 import * as vscode from "vscode";
 import {
@@ -69,6 +70,56 @@ export function projectAt(uri: vscode.Uri): Here | undefined {
   let project = projects.get(folder);
   if (!project) projects.set(folder, (project = openProject(folder, openTexts())));
   return { project, file };
+}
+
+/** The scheme of read-only previews of generated files. */
+export const previewScheme = "ingestron-generated";
+
+/** What a preview's URI names: its project folder, environment and generated file. */
+export function previewOf(uri: vscode.Uri) {
+  const query = new URLSearchParams(uri.query);
+  return {
+    folder: query.get("folder") ?? "",
+    environment: query.get("environment") ?? "",
+    file: query.get("file") ?? "",
+  };
+}
+
+/**
+ * The project of a file, or of the preview, that `uri` names. A preview also
+ * gives its environment, so a command run from it acts on what it shows.
+ */
+export function contextAt(uri: vscode.Uri): Here | undefined {
+  if (uri.scheme !== previewScheme) return projectAt(uri);
+  const { folder, file, environment } = previewOf(uri);
+  const here = projectAt(vscode.Uri.file(join(folder, "project.yaml")));
+  return here && { project: here.project, file, ...(environment && { environment }) };
+}
+
+/**
+ * The project of what a command was run on: a clicked file, preview or folder
+ * (a project folder, or any folder inside one). Without one, as from the
+ * Command Palette, the project of the active editor.
+ */
+export function hereFor(uri: vscode.Uri | undefined): Here | undefined {
+  // Menus pass a URI; anything else a command might be given means the active editor.
+  if (typeof uri?.scheme !== "string") {
+    const active = vscode.window.activeTextEditor?.document.uri;
+    return active && contextAt(active);
+  }
+  if (!isFolder(uri)) return contextAt(uri);
+  // projectFolderOf starts at a path's parent, so a stand-in file inside the folder includes it.
+  const inside = join(uri.fsPath, "project.yaml");
+  const folder = projectFolderOf(inside);
+  return folder ? projectAt(vscode.Uri.file(join(folder, "project.yaml"))) : undefined;
+}
+
+function isFolder(uri: vscode.Uri): boolean {
+  try {
+    return uri.scheme === "file" && statSync(uri.fsPath).isDirectory();
+  } catch {
+    return false;
+  }
 }
 
 /** The chosen environment, else the first the project declares. */
