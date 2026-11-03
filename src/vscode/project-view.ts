@@ -6,13 +6,22 @@ import * as vscode from "vscode";
 import { parse } from "yaml";
 import { limits } from "../features/limits.js";
 import {
+  followedFolder,
+  foldOf,
+  type Fold,
   isProjectManifest,
   projectTree,
   rowId,
   type ProjectInfo,
   type TreeNode,
 } from "../features/project-tree.js";
-import { environmentOf, onEnvironmentChange, projectAt } from "./state.js";
+import {
+  environmentOf,
+  onEnvironmentChange,
+  previewOf,
+  previewScheme,
+  projectAt,
+} from "./state.js";
 
 const exclude = "**/{build,node_modules,.git}/**";
 
@@ -29,6 +38,9 @@ export function registerProjectView(context: vscode.ExtensionContext): void {
   if (context.extensionMode === vscode.ExtensionMode.Test)
     context.subscriptions.push(
       vscode.commands.registerCommand("ingestron.projectRows", () => provider.getChildren()),
+      vscode.commands.registerCommand("ingestron.projectItems", async () =>
+        (await provider.getChildren()).map((node) => provider.getTreeItem(node)),
+      ),
     );
   context.subscriptions.push(
     provider,
@@ -49,6 +61,8 @@ export function registerProjectView(context: vscode.ExtensionContext): void {
     vscode.workspace.onDidDeleteFiles(() => provider.refresh(true)),
     vscode.workspace.onDidRenameFiles(() => provider.refresh(true)),
     vscode.workspace.onDidChangeWorkspaceFolders(() => provider.refresh(true)),
+    // With several projects, the one being worked on is the one that is open.
+    vscode.window.onDidChangeActiveTextEditor(() => void provider.followEditor()),
   );
 }
 
@@ -59,6 +73,16 @@ class ProjectTree implements vscode.TreeDataProvider<TreeNode>, vscode.Disposabl
   private folders: Promise<string[]> | undefined;
   /** A row's place in the tree, so a row keeps its expanded state when the tree is rebuilt. */
   private readonly ids = new WeakMap<TreeNode, string>();
+  /**
+   * The project of the active editor, when there are several. VS Code keeps a
+   * row's expanded state by its id and ignores a changed collapsible state on
+   * an id it knows, so when this changes `generation` goes up, which gives
+   * every row a new id and so the state it is given now. Until then a row
+   * stays as the person left it. Collapsing one row by code is not possible
+   * otherwise: `reveal` only expands, and `collapseAll` folds every row.
+   */
+  private active: string | undefined;
+  private generation = 0;
 
   /** Rebuilds the rows; `rescan` reads the project folders again first. */
   refresh(rescan = false): void {
@@ -70,22 +94,37 @@ class ProjectTree implements vscode.TreeDataProvider<TreeNode>, vscode.Disposabl
     this.changes.dispose();
   }
 
+  /** The active editor changed: open its project, if it is another one. Reads no project. */
+  async followEditor(): Promise<void> {
+    // Before the view first draws, drawing finds the active project itself.
+    if (!this.folders) return;
+    if (this.follow(await this.folders)) this.changes.fire();
+  }
+
+  /** True when the project followed changed. */
+  private follow(folders: string[]): boolean {
+    const next = followedFolder(
+      folders,
+      fileOf(vscode.window.activeTextEditor?.document.uri),
+      this.active,
+    );
+    if (next === this.active) return false;
+    this.active = next;
+    this.generation += 1;
+    return true;
+  }
+
   async getChildren(node?: TreeNode): Promise<TreeNode[]> {
     const rows = node
       ? (node.children ?? [])
       : projectTree(await this.projects(), vscode.Uri.file, relativeToWorkspace);
-    const parent = node ? this.ids.get(node) : "";
+    const parent = node ? this.ids.get(node) : String(this.generation);
     for (const row of rows) this.ids.set(row, rowId(parent ?? "", row));
     return rows;
   }
 
   getTreeItem(node: TreeNode): vscode.TreeItem {
-    const item = new vscode.TreeItem(
-      node.label,
-      node.children
-        ? vscode.TreeItemCollapsibleState.Expanded
-        : vscode.TreeItemCollapsibleState.None,
-    );
+    const item = new vscode.TreeItem(node.label, collapsibleStateOf(foldOf(node, this.active)));
     item.id = this.ids.get(node);
     item.iconPath = new vscode.ThemeIcon(node.icon);
     if (node.description) item.description = node.description;
@@ -100,6 +139,7 @@ class ProjectTree implements vscode.TreeDataProvider<TreeNode>, vscode.Disposabl
 
   private async projects(): Promise<ProjectInfo[]> {
     this.folders ??= findFolders();
+    this.follow(await this.folders);
     const found: ProjectInfo[] = [];
     for (const folder of await this.folders) {
       const here = projectAt(vscode.Uri.file(join(folder, "project.yaml")));
@@ -115,6 +155,19 @@ class ProjectTree implements vscode.TreeDataProvider<TreeNode>, vscode.Disposabl
     }
     return found;
   }
+}
+
+/** VS Code's name for a row's starting state. */
+function collapsibleStateOf(fold: Fold): vscode.TreeItemCollapsibleState {
+  const states = vscode.TreeItemCollapsibleState;
+  return { expanded: states.Expanded, collapsed: states.Collapsed, none: states.None }[fold];
+}
+
+/** The path whose project an editor's document belongs to: a file, or a preview's project folder. */
+function fileOf(uri: vscode.Uri | undefined): string | undefined {
+  if (uri?.scheme === "file") return uri.fsPath;
+  if (uri?.scheme === previewScheme) return previewOf(uri).folder || undefined;
+  return undefined;
 }
 
 /** A folder as the Explorer spells it, relative to the workspace; "." for the workspace folder itself. */
