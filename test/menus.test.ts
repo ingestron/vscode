@@ -29,8 +29,9 @@ describe("Explorer menu", () => {
       expect(entry?.group, command).toBe(`ingestron@${index + 1}`);
       expect(entry?.when, command).toContain("explorerResourceIsFolder");
       expect(entry?.when, command).toContain("resourcePath in ingestron.projectFolders");
-      expect(entry?.when, command).toContain("resourceFilename == project.yaml");
-      expect(entry?.when, command).toMatch(/\\\.ya\?ml/);
+      // A file counts only when it is inside a project: never any YAML file.
+      expect(entry?.when, command).toContain("resourcePath in ingestron.projectFiles");
+      expect(entry?.when, command).not.toContain("hasProjects");
     });
   });
 
