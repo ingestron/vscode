@@ -9,6 +9,7 @@ import { environmentOf, forget, projectAt } from "./state.js";
 const severities: Record<Problem["severity"], vscode.DiagnosticSeverity> = {
   error: vscode.DiagnosticSeverity.Error,
   warning: vscode.DiagnosticSeverity.Warning,
+  information: vscode.DiagnosticSeverity.Information,
 };
 
 /** Registers the problem collection and keeps it up to date. Returns a refresh for a file. */
