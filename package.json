@@ -127,27 +127,27 @@
       "explorer/context": [
         {
           "command": "ingestron.check",
-          "when": "((explorerResourceIsFolder && resourcePath in ingestron.projectFolders) || resourceFilename == project.yaml || (resourceExtname =~ /^\\.ya?ml$/ && ingestron.hasProjects))",
+          "when": "((explorerResourceIsFolder && resourcePath in ingestron.projectFolders) || resourcePath in ingestron.projectFiles)",
           "group": "ingestron@1"
         },
         {
           "command": "ingestron.plan",
-          "when": "((explorerResourceIsFolder && resourcePath in ingestron.projectFolders) || resourceFilename == project.yaml || (resourceExtname =~ /^\\.ya?ml$/ && ingestron.hasProjects))",
+          "when": "((explorerResourceIsFolder && resourcePath in ingestron.projectFolders) || resourcePath in ingestron.projectFiles)",
           "group": "ingestron@2"
         },
         {
           "command": "ingestron.apply",
-          "when": "((explorerResourceIsFolder && resourcePath in ingestron.projectFolders) || resourceFilename == project.yaml || (resourceExtname =~ /^\\.ya?ml$/ && ingestron.hasProjects))",
+          "when": "((explorerResourceIsFolder && resourcePath in ingestron.projectFolders) || resourcePath in ingestron.projectFiles)",
           "group": "ingestron@3"
         },
         {
           "command": "ingestron.compareEnvironments",
-          "when": "((explorerResourceIsFolder && resourcePath in ingestron.projectFolders) || resourceFilename == project.yaml || (resourceExtname =~ /^\\.ya?ml$/ && ingestron.hasProjects))",
+          "when": "((explorerResourceIsFolder && resourcePath in ingestron.projectFolders) || resourcePath in ingestron.projectFiles)",
           "group": "ingestron@4"
         },
         {
           "command": "ingestron.platformRequest",
-          "when": "((explorerResourceIsFolder && resourcePath in ingestron.projectFolders) || resourceFilename == project.yaml || (resourceExtname =~ /^\\.ya?ml$/ && ingestron.hasProjects))",
+          "when": "((explorerResourceIsFolder && resourcePath in ingestron.projectFolders) || resourcePath in ingestron.projectFiles)",
           "group": "ingestron@5"
         },
         {
