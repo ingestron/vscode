@@ -1,6 +1,7 @@
 // Plan, Apply, Check, Select environment, Show generated files, Compare with
 // build, Compare environments and Prepare platform request. The first three run the CLI itself, so
-// results are identical. Each works from a project file or a generated-file preview.
+// results are identical. Each works from a project file or a generated-file preview, and, run from
+// a menu, on the file or folder that was clicked.
 import { join } from "node:path";
 import { run } from "@ingestron/cli";
 import * as vscode from "vscode";
@@ -14,8 +15,8 @@ import {
   tableAtCursor,
   type Generated,
 } from "@ingestron/authoring";
-import { contextAt, previewUri, registerPreviews } from "./previews.js";
-import { chooseEnvironment, environmentHere, type Here } from "./state.js";
+import { previewUri, registerPreviews } from "./previews.js";
+import { chooseEnvironment, contextAt, environmentHere, hereFor } from "./state.js";
 
 /** Registers the commands; `refresh` updates problems after the environment changes. */
 export function registerCommands(
@@ -26,7 +27,7 @@ export function registerCommands(
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
   status.command = "ingestron.selectEnvironment";
   const updateStatus = () => {
-    const here = current();
+    const here = hereFor(undefined);
     const environment = here && environmentHere(here);
     if (!environment) return status.hide();
     status.text = `Ingestron: ${environment}`;
@@ -38,19 +39,14 @@ export function registerCommands(
   context.subscriptions.push(
     status,
     vscode.window.onDidChangeActiveTextEditor(updateStatus),
-    ...(["plan", "apply", "check"] as const).map((name) =>
-      vscode.commands.registerCommand(`ingestron.${name}`, async () => {
-        await runCli(name, output);
-        // Apply rewrites build/: show what is true now.
-        const uri = vscode.window.activeTextEditor?.document.uri;
-        if (uri) refresh(uri);
-      }),
-    ),
+    ...cliCommands(output, refresh),
     vscode.commands.registerCommand("ingestron.selectEnvironment", async () => {
       await selectEnvironment(refresh);
       updateStatus();
     }),
-    vscode.commands.registerCommand("ingestron.showGenerated", () => showGenerated(false)),
+    vscode.commands.registerCommand("ingestron.showGenerated", (uri?: vscode.Uri) =>
+      showGenerated(false, uri),
+    ),
     vscode.commands.registerCommand("ingestron.compareWithBuild", () => showGenerated(true)),
     vscode.commands.registerCommand("ingestron.openGenerated", openGenerated),
     vscode.commands.registerCommand("ingestron.platformRequest", showPlatformRequest),
@@ -60,17 +56,24 @@ export function registerCommands(
   updateStatus();
 }
 
-/** The project of the active editor: a project file, or a preview of one's generated files. */
-function current(): Here | undefined {
-  const uri = vscode.window.activeTextEditor?.document.uri;
-  return uri && contextAt(uri);
+/** Plan, Apply and Check, which run the CLI in the project of the file or folder they are given. */
+function cliCommands(output: vscode.OutputChannel, refresh: (uri: vscode.Uri) => void) {
+  return (["plan", "apply", "check"] as const).map((name) =>
+    vscode.commands.registerCommand(`ingestron.${name}`, async (uri?: vscode.Uri) => {
+      const project = await runCli(name, output, uri);
+      // Apply rewrites build/: show what is true now.
+      if (project) refresh(vscode.Uri.file(join(project, "project.yaml")));
+    }),
+  );
 }
 
+/** Runs the CLI in the project of `uri`, else of the active editor. Returns the project folder it ran in. */
 async function runCli(
   command: "plan" | "apply" | "check",
   output: vscode.OutputChannel,
-): Promise<void> {
-  const here = current();
+  uri: vscode.Uri | undefined,
+): Promise<string | undefined> {
+  const here = hereFor(uri);
   if (!here)
     return void vscode.window.showInformationMessage("Open a file of an Ingestron project first.");
   const { folder } = here.project;
@@ -92,10 +95,11 @@ async function runCli(
   output.clear();
   output.show(true);
   run(args, { cwd: folder, write: (text) => output.append(text) });
+  return folder;
 }
 
 async function selectEnvironment(refresh: (uri: vscode.Uri) => void): Promise<void> {
-  const here = current();
+  const here = hereFor(undefined);
   if (!here || here.project.environments.length === 0) return;
   const picked = await vscode.window.showQuickPick(here.project.environments, {
     placeHolder: "Environment for problems and previews",
@@ -105,10 +109,9 @@ async function selectEnvironment(refresh: (uri: vscode.Uri) => void): Promise<vo
   refresh(vscode.window.activeTextEditor!.document.uri);
 }
 
-async function showGenerated(compare: boolean): Promise<void> {
-  const editor = vscode.window.activeTextEditor;
-  const here = editor && contextAt(editor.document.uri);
-  if (!editor || !here) return;
+async function showGenerated(compare: boolean, clicked?: vscode.Uri): Promise<void> {
+  const here = hereFor(clicked);
+  if (!here) return;
   const environment = environmentHere(here);
   const excluded = problems(here.project, environment).find(
     (problem) => problem.code === "NOT_IMPORTED" && problem.file === here.file,
@@ -120,10 +123,12 @@ async function showGenerated(compare: boolean): Promise<void> {
   const files = generatedFiles(here.project, environment);
   if (!Array.isArray(files))
     return void vscode.window.showWarningMessage(files.problems.split("\n")[0]!);
-  const table = tableAtCursor(
-    editor.document.getText(),
-    editor.document.offsetAt(editor.selection.active),
-  );
+  const editor = vscode.window.activeTextEditor;
+  // The table under the cursor narrows the choice only when the cursor is in the clicked file.
+  const table =
+    editor && (!clicked || editor.document.uri.toString() === clicked.toString())
+      ? tableAtCursor(editor.document.getText(), editor.document.offsetAt(editor.selection.active))
+      : undefined;
   const chosen = await pick(table ? generatedForTable(files, table) : [], files);
   if (!chosen) return;
   const preview = previewUri(here.project, environment, chosen.path);
@@ -138,15 +143,15 @@ async function showGenerated(compare: boolean): Promise<void> {
 }
 
 /** The platform request for the chosen environment, as an unsaved Markdown document to send. */
-async function showPlatformRequest(): Promise<void> {
-  const here = current();
+async function showPlatformRequest(uri?: vscode.Uri): Promise<void> {
+  const here = hereFor(uri);
   if (!here) return void vscode.window.showWarningMessage("Open a file of an Ingestron project.");
   await markdown(platformRequest(here.project, environmentHere(here)));
 }
 
 /** The differences between two environments, chosen when the project has more than two. */
-async function showComparison(): Promise<void> {
-  const here = current();
+async function showComparison(uri?: vscode.Uri): Promise<void> {
+  const here = hereFor(uri);
   const names = here?.project.environments ?? [];
   if (!here || names.length < 2)
     return void vscode.window.showWarningMessage(
