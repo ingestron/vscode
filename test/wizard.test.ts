@@ -89,7 +89,7 @@ it("creates the selected ADF connection with the shared CLI questions", async ()
   expect(readFileSync(join(state.folder, "connections/postgresql.yaml"), "utf8")).toContain(
     "connector: postgresql",
   );
-  expect(readFileSync(join(state.folder, "standard.yaml"), "utf8")).toContain("adf@1");
+  expect(readFileSync(join(state.folder, "standard.yaml"), "utf8")).toContain("adf@2");
   expect(state.menus).toHaveLength(5);
 });
 it("offers both routes for public files and creates the chosen direct project", async () => {
@@ -101,7 +101,7 @@ it("offers both routes for public files and creates the chosen direct project", 
     "ADF ingestion, ending at the landed files",
   ]);
   expect(state.output).toContain("Created");
-  expect(readFileSync(join(state.folder, "standard.yaml"), "utf8")).not.toContain("adf@1");
+  expect(readFileSync(join(state.folder, "standard.yaml"), "utf8")).not.toContain("adf@2");
 });
 it.each([0, 1, 2, 3, 4])(
   "cancels at source-choice step %s without asking for a folder",
@@ -132,7 +132,7 @@ it("creates a project from a starter, with the starter's environments", async ()
   expect(state.menus[1]).toContain("DuckDB on a laptop");
   expect(state.output).toContain("Created");
   expect(existsSync(join(state.folder, "samples/orders.csv"))).toBe(true);
-  expect(readFileSync(join(state.folder, "standard.yaml"), "utf8")).toContain("duckdb@1");
+  expect(readFileSync(join(state.folder, "standard.yaml"), "utf8")).toContain("duckdb@2");
   const project = readFileSync(join(state.folder, "project.yaml"), "utf8");
   expect(project).toContain("dev: {}");
   expect(project).not.toContain("prod");
