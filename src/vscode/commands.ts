@@ -15,6 +15,7 @@ import {
   tableAtCursor,
   type Generated,
 } from "@ingestron/authoring";
+import { stoppedMessage } from "../features/stopped.js";
 import { previewUri, registerPreviews } from "./previews.js";
 import { selectEnvironment } from "./environment.js";
 import { contextAt, environmentHere, hereFor } from "./state.js";
@@ -110,7 +111,7 @@ async function showGenerated(compare: boolean, clicked?: vscode.Uri): Promise<vo
     );
   const files = generatedFiles(here.project, environment);
   if (!Array.isArray(files))
-    return void vscode.window.showWarningMessage(files.problems.split("\n")[0]!);
+    return void vscode.window.showWarningMessage(stoppedMessage(files.problems));
   const editor = vscode.window.activeTextEditor;
   // The table under the cursor narrows the choice only when the cursor is in the clicked file.
   const table =
