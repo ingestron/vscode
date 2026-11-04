@@ -34,7 +34,7 @@ export function registerCommands(
     if (!environment) return status.hide();
     status.text = `Ingestron: ${environment}`;
     status.tooltip = here.environment
-      ? "The environment this preview shows. Prepare platform request uses it too."
+      ? "The environment this preview shows. Show generated files and Prepare platform request use it from here."
       : "The environment for problems, previews and the platform request";
     status.show();
   };

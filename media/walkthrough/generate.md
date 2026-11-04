@@ -6,9 +6,9 @@
   edited by hand are never overwritten.
 - Turn on auto-apply from the status bar to write on every save.
 
-Plan and Apply generate every environment together, into one folder for each
-platform, such as `build/databricks/` and `build/adf/`. Deploy each with your
-platform's own tools: the Databricks bundle with the Databricks CLI, one
-target for each environment; ADF's `factory/` with that environment's
-`parameters/<environment>.json`; Synapse views with `views.sql`; or DuckDB's
-`build/duckdb/<environment>/run.sql` with DuckDB.
+Plan and Apply generate every environment together, one folder for each
+platform, such as `build/databricks/` and `build/adf/`. Deploy each with its
+own tools: the Databricks bundle with `databricks bundle deploy -t
+<environment>`; ADF's `factory/` through the factory's Git and Microsoft's
+CI/CD, with `parameters/<environment>.json`; Synapse views with `views.sql`;
+DuckDB's `build/duckdb/<environment>/run.sql` with DuckDB.

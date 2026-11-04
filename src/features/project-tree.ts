@@ -62,9 +62,14 @@ const actions: { id: string; label: string; icon: string; tooltip?: string }[] =
     id: "ingestron.platformRequest",
     label: "Prepare platform request",
     icon: "mail",
-    tooltip: "For the selected environment",
+    tooltip: "Write what to ask the platform team, for the selected environment",
   },
-  { id: "ingestron.showGenerated", label: "Show generated files", icon: "file-code" },
+  {
+    id: "ingestron.showGenerated",
+    label: "Show generated files",
+    icon: "file-code",
+    tooltip: "Show the files generated for the selected environment",
+  },
 ];
 
 /**
