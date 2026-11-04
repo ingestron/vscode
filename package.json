@@ -295,9 +295,9 @@
   },
   "dependencies": {
     "@ingestron/authoring": "^1.7.0",
-    "@ingestron/cli": "^1.10.1",
+    "@ingestron/cli": "^1.10.2",
     "@ingestron/config": "^1.4.0",
-    "@ingestron/definitions": "^1.7.0",
+    "@ingestron/definitions": "^1.7.1",
     "@ingestron/generate": "^1.0.1",
     "@ingestron/pack-adf": "^1.5.0",
     "@ingestron/pack-databricks": "^1.1.0",
