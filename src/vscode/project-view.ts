@@ -1,5 +1,5 @@
 // The Project view in the Ingestron side bar: each project's environments
-// (click one to select it) and the actions on the project. It reads the same
+// (click one to select it for problems and previews) and the actions on the project. It reads the same
 // state as the status bar and keeps nothing of its own.
 import { basename, dirname, join } from "node:path";
 import * as vscode from "vscode";
@@ -149,6 +149,7 @@ class ProjectTree implements vscode.TreeDataProvider<TreeNode>, vscode.Disposabl
     item.id = this.ids.get(node);
     item.iconPath = new vscode.ThemeIcon(node.icon);
     if (node.description) item.description = node.description;
+    if (node.tooltip) item.tooltip = node.tooltip;
     if (node.command)
       item.command = {
         command: node.command.id,
