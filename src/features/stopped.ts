@@ -15,15 +15,22 @@ export function firstSentence(lines: readonly string[]): string | undefined {
 
 /**
  * Why no generated file can be shown, from what plan prints before it stops: the
- * environments or packs with problems, and to run Plan to see them; or the sentence of
- * the problem that stopped it.
+ * environments or packs with problems, from every group that has an error, and to run Plan
+ * to see them; or the sentence of the problem that stopped it.
  */
 export function stoppedMessage(problems: string): string {
   const lines = problems.split("\n");
-  const names = /^(.+): the definitions have problems$/.exec(lines[0] ?? "")?.[1];
-  if (names) {
-    const have = names.includes(", ") ? "have" : "has";
-    return `Nothing is generated while plan would stop: ${names} ${have} problems. Run Plan to see them.`;
+  // Every group with an error, wherever it comes: a group of warnings can be first.
+  const names = [
+    ...new Set(
+      lines.flatMap(
+        (line) => /^(.+): the definitions have problems$/.exec(line)?.[1]?.split(", ") ?? [],
+      ),
+    ),
+  ];
+  if (names.length > 0) {
+    const have = names.length > 1 ? "have" : "has";
+    return `Nothing is generated while plan would stop: ${names.join(", ")} ${have} problems. Run Plan to see them.`;
   }
   return `Nothing is generated: ${firstSentence(lines) ?? "plan would stop"}`;
 }

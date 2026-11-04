@@ -14,6 +14,20 @@ describe("the message when nothing is generated", () => {
     );
   });
 
+  it("names the environments with errors when a group of warnings comes first", () => {
+    const text = [
+      "dev, prod: warnings",
+      "project.yaml  warning  NO_MATCH",
+      '  No file matches the import "transforms/*.yaml".',
+      "prod: the definitions have problems",
+      "flows/shop.yaml:5:8  error  UNKNOWN_LAYER",
+      "  …",
+    ].join("\n");
+    expect(stoppedMessage(text)).toBe(
+      "Nothing is generated while plan would stop: prod has problems. Run Plan to see them.",
+    );
+  });
+
   it("gives a diagnostic's sentence, not its code line", () => {
     const refused = [
       "project.yaml:1:1  error  PACK_LOAD",
