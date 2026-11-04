@@ -28,7 +28,7 @@ const fs = require("node:fs");
 
 /** A generated file changed on disk, outside the editor, then deleted: the warning follows both. */
 async function editedOnDisk(folder) {
-  const generated = path.join(folder, "build/dev/src/retail/bronze/customers.sql");
+  const generated = path.join(folder, "build/databricks/src/retail/bronze/customers.sql");
   const uri = vscode.Uri.file(generated);
   const edited = () =>
     vscode.languages.getDiagnostics(uri).some((item) => codeOf(item) === "EDITED");
@@ -52,7 +52,7 @@ async function autoApply(folder) {
   );
   await vscode.workspace.applyEdit(edit);
   await document.save();
-  const sql = path.join(folder, "build/dev/src/retail/bronze/orders.sql");
+  const sql = path.join(folder, "build/databricks/src/retail/bronze/orders.sql");
   await until(
     // The file appears after the debounced apply, so a missing file is not yet a failure.
     () => fs.existsSync(sql) && fs.readFileSync(sql, "utf8").includes("total >= 1"),
@@ -196,7 +196,8 @@ exports.run = async function run() {
   }, "the generated file preview");
   assert.match(
     preview.getText(),
-    /CREATE OR REFRESH STREAMING TABLE `dev_sales`\.`bronze`\.`orders`/,
+    // The bundle builds every environment, so the catalog is each target's, not in the SQL.
+    /CREATE OR REFRESH STREAMING TABLE `bronze`\.`orders` \(/,
   );
   await previewsPerProject(folder, preview);
   await previewEnvironment(folder, document, preview);
@@ -280,7 +281,7 @@ async function previewsPerProject(folder, firstPreview) {
 
   await vscode.window.showTextDocument(preview);
   await vscode.commands.executeCommand("ingestron.apply");
-  const written = path.join(other, "build/dev/src/retail/bronze/orders.sql");
+  const written = path.join(other, "build/databricks/src/retail/bronze/orders.sql");
   await until(() => fs.existsSync(written), "Apply from the preview to write its project");
   assert.match(fs.readFileSync(written, "utf8"), /total >= 1000/);
 }
@@ -356,7 +357,7 @@ async function dataProducts(folder) {
     "apiVersion: v1.1.0\nkind: DataProduct\nid: customers\nname: Customers\n" +
       "outputPorts:\n  - { name: customers, contractId: shop.customers }\n",
   );
-  const passport = path.join(folder, "build/dev/products/customers.md");
+  const passport = path.join(folder, "build/products/dev/customers.md");
   await until(async () => {
     await vscode.commands.executeCommand("ingestron.apply");
     return fs.existsSync(passport);
@@ -373,7 +374,7 @@ async function dataProducts(folder) {
   );
   fs.writeFileSync(standard, kept);
   fs.rmSync(product);
-  fs.rmSync(path.join(folder, "build/dev/products"), { recursive: true, force: true });
+  fs.rmSync(path.join(folder, "build/products"), { recursive: true, force: true });
   await until(
     () => vscode.languages.getDiagnostics(contract).length === 0,
     "the problems to clear",
@@ -518,9 +519,10 @@ async function coreLoop() {
   // 5. Apply: the transform is generated, and the project has no problems.
   await vscode.window.showTextDocument(transform);
   await vscode.commands.executeCommand("ingestron.apply");
-  const generated = path.join(folder, "build/dev/src/shop/silver/big_returns.sql");
+  const generated = path.join(folder, "build/databricks/src/shop/silver/big_returns.sql");
   await until(() => fs.existsSync(generated), "Apply to generate the transform");
-  assert.match(fs.readFileSync(generated, "utf8"), /FROM `dev`\.`bronze`\.`returns`/);
+  // The catalog is each bundle target's, so the SQL names the schema and table only.
+  assert.match(fs.readFileSync(generated, "utf8"), /FROM `bronze`\.`returns` WHERE amount > 10/);
   await until(
     () =>
       vscode.languages
@@ -539,9 +541,9 @@ const outputText = () =>
     .join("\n");
 
 /**
- * A second project, with environments of its own: Check run from its
+ * A second project, with environments of its own: Plan run from its
  * project.yaml, or from its folder, runs there while a file of the first
- * project is the active editor.
+ * project is the active editor. Plan names the environments it generates.
  */
 async function clickedProject(active) {
   // A fresh copy each time: the extension reads a project's environments once per snapshot.
@@ -562,20 +564,21 @@ async function clickedProject(active) {
     );
     return folder;
   };
-  const checkedIn = async (target, environment, what) => {
+  const targets = (environment) => `databricks → build/databricks (${environment}, prod)`;
+  const plannedIn = async (target, environment, what) => {
     await vscode.window.showTextDocument(active);
-    await vscode.commands.executeCommand("ingestron.check", target);
-    await until(() => outputText().includes(`${environment}: `), what);
-    assert.doesNotMatch(outputText(), /^dev: /m, `${what} ran in the active editor's project`);
+    await vscode.commands.executeCommand("ingestron.plan", target);
+    await until(() => outputText().includes(targets(environment)), what);
+    assert.ok(!outputText().includes(targets("dev")), `${what} ran in the active editor's project`);
   };
   // Without a clicked file, the active editor's project runs.
   await vscode.window.showTextDocument(active);
-  await vscode.commands.executeCommand("ingestron.check");
-  await until(() => /^dev: /m.test(outputText()), "Check from the active editor");
+  await vscode.commands.executeCommand("ingestron.plan");
+  await until(() => outputText().includes(targets("dev")), "Plan from the active editor");
   const byFile = copy("uat");
-  await checkedIn(vscode.Uri.file(path.join(byFile, "project.yaml")), "uat", "Check from a file");
+  await plannedIn(vscode.Uri.file(path.join(byFile, "project.yaml")), "uat", "Plan from a file");
   const byFolder = copy("stage");
-  await checkedIn(vscode.Uri.file(byFolder), "stage", "Check from a project folder");
+  await plannedIn(vscode.Uri.file(byFolder), "stage", "Plan from a project folder");
 }
 
 /**
@@ -721,19 +724,20 @@ async function choosing(choice, action) {
 }
 
 /**
- * With prod selected for the project, Apply run from a dev preview applies
- * dev: the environment the preview shows.
+ * With prod selected for the project, Apply run from a dev preview still
+ * applies every environment together: one bundle with a target for each.
  */
 async function previewEnvironment(folder, source, devPreview) {
   await vscode.window.showTextDocument(source);
   await choosing("prod", () => vscode.commands.executeCommand("ingestron.selectEnvironment"));
-  const dev = path.join(folder, "build/dev/src/retail/bronze/orders.sql");
-  fs.rmSync(path.join(folder, "build/prod"), { recursive: true, force: true });
-  fs.rmSync(dev);
+  const bundle = path.join(folder, "build/databricks/databricks.yml");
+  fs.rmSync(bundle);
   await vscode.window.showTextDocument(devPreview);
   await vscode.commands.executeCommand("ingestron.apply");
-  await until(() => fs.existsSync(dev), "Apply from the dev preview to write build/dev");
-  assert.equal(fs.existsSync(path.join(folder, "build/prod")), false, "build/prod was written");
+  await until(() => fs.existsSync(bundle), "Apply from the dev preview to write the bundle");
+  const targets = fs.readFileSync(bundle, "utf8").split("\ntargets:\n")[1] ?? "";
+  assert.deepEqual(targets.match(/^ {2}\w+(?=:$)/gm), ["  dev", "  prod"], "the bundle's targets");
+  assert.equal(fs.existsSync(path.join(folder, "build/dev")), false, "build/dev was written");
   await vscode.window.showTextDocument(source);
   await choosing("dev", () => vscode.commands.executeCommand("ingestron.selectEnvironment"));
 }
