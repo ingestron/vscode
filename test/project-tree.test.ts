@@ -77,7 +77,12 @@ describe("projectTree", () => {
     expect(tooltip("Environments")).toBe(
       "Problems, previews and the platform request show the selected environment. Plan, Apply and Check work on every environment together.",
     );
-    expect(tooltip("Prepare platform request")).toBe("For the selected environment");
+    expect(tooltip("Prepare platform request")).toBe(
+      "Write what to ask the platform team, for the selected environment",
+    );
+    expect(tooltip("Show generated files")).toBe(
+      "Show the files generated for the selected environment",
+    );
   });
 
   it("passes the folder's path as it is when no uri is made from it", () => {
