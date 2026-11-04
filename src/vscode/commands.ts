@@ -1,7 +1,7 @@
 // Plan, Apply, Check, Select environment, Show generated files, Compare with
 // build, Compare environments and Prepare platform request. The first three run the CLI itself, so
-// results are identical. Each works from a project file or a generated-file preview, and, run from
-// a menu, on the file or folder that was clicked.
+// results are identical, and generate every environment together. Each works from a project file
+// or a generated-file preview, and, run from a menu, on the file or folder that was clicked.
 import { join } from "node:path";
 import { run } from "@ingestron/cli";
 import * as vscode from "vscode";
@@ -33,8 +33,8 @@ export function registerCommands(
     if (!environment) return status.hide();
     status.text = `Ingestron: ${environment}`;
     status.tooltip = here.environment
-      ? "The environment this preview shows; commands run from it use it"
-      : "The environment for problems and previews";
+      ? "The environment this preview shows. Prepare platform request uses it too."
+      : "The environment for problems, previews and the platform request";
     status.show();
   };
   context.subscriptions.push(
@@ -60,7 +60,10 @@ export function registerCommands(
   updateStatus();
 }
 
-/** Plan, Apply and Check, which run the CLI in the project of the file or folder they are given. */
+/**
+ * Plan, Apply and Check, which run the CLI in the project of the file or folder they are given,
+ * for every environment together: the CLI takes no environment for them.
+ */
 function cliCommands(output: vscode.OutputChannel, refresh: (uri: vscode.Uri) => void) {
   return (["plan", "apply", "check"] as const).map((name) =>
     vscode.commands.registerCommand(`ingestron.${name}`, async (uri?: vscode.Uri) => {
@@ -87,15 +90,7 @@ async function runCli(
     return void vscode.window.showWarningMessage(
       `Could not save ${unsaved}, so nothing was run: the command would read the old file.`,
     );
-  const environment = environmentHere(here);
-  const args = [
-    command,
-    "--definitions",
-    folder,
-    "--out",
-    join(folder, "build"),
-    ...(environment ? ["--env", environment] : []),
-  ];
+  const args = [command, "--definitions", folder, "--out", join(folder, "build")];
   output.clear();
   output.show(true);
   run(args, { cwd: folder, write: (text) => output.append(text) });
