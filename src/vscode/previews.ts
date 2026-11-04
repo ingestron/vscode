@@ -9,9 +9,12 @@ import { onProjectChange, previewOf, previewScheme, projectAt } from "./state.js
 
 /**
  * The preview of one generated file. The path starts with the project
- * folder's name and the environment, so the tab and breadcrumbs say which
- * project it is; the query holds the folder itself, so two projects with the
- * same name and output paths never share a preview.
+ * folder's name and the environment, so previews of the same file from two
+ * projects or environments have different paths. VS Code shows no
+ * breadcrumbs for this scheme, and a tab adds the path only when another
+ * open tab has the same file name. The
+ * query holds the folder itself, so two projects with the same name and
+ * output paths never share a preview.
  */
 export function previewUri(project: Project, environment: string | undefined, path: string) {
   return vscode.Uri.from({
