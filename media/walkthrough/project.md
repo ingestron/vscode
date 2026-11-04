@@ -26,6 +26,6 @@ relative to the workspace.
 A **data product** is a file in `products/` (import `products/*.yaml`): who
 owns it, what it is for, and the contracts whose tables it publishes. A new
 empty file there offers a skeleton. Apply writes a plain-language passport per
-product to `build/<environment>/products/`, and the standard's `governance`
+product to `build/products/<environment>/`, and the standard's `governance`
 section can require owners, purposes and column classifications, shown as
 problems until they are met.
