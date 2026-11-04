@@ -2,7 +2,7 @@
   "name": "ingestron-vscode",
   "displayName": "Ingestron",
   "description": "Problems, navigation, completion, setting explanations and generated-file previews for Ingestron projects.",
-  "version": "1.8.0",
+  "version": "2.0.0",
   "publisher": "ingestron",
   "private": true,
   "license": "Apache-2.0",
