@@ -12,8 +12,8 @@ importers:
         specifier: ^1.7.0
         version: 1.7.0
       '@ingestron/cli':
-        specifier: ^1.10.0
-        version: 1.10.0
+        specifier: ^1.10.1
+        version: 1.10.1
       '@ingestron/config':
         specifier: ^1.4.0
         version: 1.4.0
@@ -357,8 +357,8 @@ packages:
     resolution: {integrity: sha512-T7I954MuZdDK8tSZuxw572mRN2jG27hpayd9Cvjwi5GzxeqRshWRQEpIUr7y8mXsZrTvJ6RUa8SsURyFNn5W7A==}
     engines: {node: '>=22.13.0'}
 
-  '@ingestron/cli@1.10.0':
-    resolution: {integrity: sha512-2OJ6v1/6EVooLQs0rlNARVCbVjgNiNw4lhYhQ9A3psKpRElfN5+5f2iMykrzGyWMZISpNBblcCcRf6Rj3wBLuQ==}
+  '@ingestron/cli@1.10.1':
+    resolution: {integrity: sha512-+iA2eNG5MsDVnf4JQRgz3N9At9c1gBybalUIIUP9UF0LSyWlo2YPnNFPvgqEUlMhOXareyWgeJShnOU+gsTe2g==}
     engines: {node: '>=22.13.0'}
     hasBin: true
 
@@ -2093,13 +2093,13 @@ snapshots:
 
   '@ingestron/authoring@1.7.0':
     dependencies:
-      '@ingestron/cli': 1.10.0
+      '@ingestron/cli': 1.10.1
       '@ingestron/config': 1.4.0
       '@ingestron/definitions': 1.7.0
       '@ingestron/generate': 1.0.1
       yaml: 2.9.1
 
-  '@ingestron/cli@1.10.0':
+  '@ingestron/cli@1.10.1':
     dependencies:
       '@ingestron/config': 1.4.0
       '@ingestron/definitions': 1.7.0

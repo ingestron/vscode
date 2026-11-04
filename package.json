@@ -295,7 +295,7 @@
   },
   "dependencies": {
     "@ingestron/authoring": "^1.7.0",
-    "@ingestron/cli": "^1.10.0",
+    "@ingestron/cli": "^1.10.1",
     "@ingestron/config": "^1.4.0",
     "@ingestron/definitions": "^1.7.0",
     "@ingestron/generate": "^1.0.1",
