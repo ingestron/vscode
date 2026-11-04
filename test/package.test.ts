@@ -18,6 +18,8 @@ describe("extension package", () => {
     expect(files).toContain("THIRD_PARTY_NOTICES");
     // Screenshots and other scratch output stay out of the package.
     expect(files.filter((file) => file.startsWith(".tmp/"))).toEqual([]);
+    // pnpm's workspace settings can name local paths, such as tarballs to test with.
+    expect(files).not.toContain("pnpm-workspace.yaml");
     const notices = readFileSync(join(root, "THIRD_PARTY_NOTICES"), "utf8");
     expect(notices).toMatch(/^## yaml@/m);
     expect(notices).not.toMatch(/@ingestron\//);
