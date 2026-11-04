@@ -18,7 +18,7 @@
 // `--theme=dark` only that theme, and `--keep` saves a refused crop as
 // `<name>-<theme>.rejected.png` instead of stopping.
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,11 +26,19 @@ import { _electron as electron } from "playwright-core";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const installs = join(root, ".vscode-test");
-const application = join(
-  installs,
-  readdirSync(installs).find((name) => name.startsWith("vscode-")),
-  "Visual Studio Code.app",
-);
+/** `test:integration` downloads each new stable release beside the last: use the newest. */
+const versionOf = (name) => name.split("-").at(-1).split(".").map(Number);
+const newer = (a, b) => {
+  const [x, y] = [versionOf(a), versionOf(b)];
+  const differs = x.findIndex((part, index) => part !== y[index]);
+  return differs === -1 ? 0 : y[differs] - x[differs];
+};
+const install = readdirSync(installs)
+  .filter((name) => /^vscode-.*-\d+\.\d+\.\d+$/.test(name))
+  .sort(newer)[0];
+if (!install) throw new Error("No VS Code in .vscode-test: run pnpm test:integration once first.");
+const application = join(installs, install, "Visual Studio Code.app");
+console.log(`VS Code ${versionOf(install).join(".")}`);
 const cli = join(root, "node_modules/@ingestron/cli/dist/main.js");
 /** Every crop's width in CSS pixels, at device scale 2: 1600 image pixels. */
 const width = 800;
@@ -46,6 +54,10 @@ const option = (name) =>
     ?.slice(name.length + 3);
 const only = option("only") ? new Set(option("only").split(",")) : undefined;
 const themeNames = option("theme") ? [option("theme")] : Object.keys(themes);
+for (const theme of themeNames) {
+  if (!themes[theme])
+    throw new Error(`--theme=${theme}: use one of ${Object.keys(themes).join(", ")}`);
+}
 const folderArgument = process.argv.slice(2).find((argument) => !argument.startsWith("--"));
 const out = resolve(folderArgument ?? join(root, ".tmp/screenshots"));
 const wanted = (name) => !only || only.has(name);
@@ -117,6 +129,12 @@ async function session(
   }
   const workspace = projects.length === 1 ? join(parent, projects[0][1]) : parent;
   const profile = mkdtempSync(join(tmpdir(), "ingestron-shots-profile-"));
+  /** Closes VS Code and removes the session's projects and profile. */
+  const close = async () => {
+    await vscode.close();
+    for (const folder of [dirname(parent), profile])
+      rmSync(folder, { recursive: true, force: true });
+  };
   mkdirSync(join(profile, "User"), { recursive: true });
   const userSettings = { ...settings, "workbench.colorTheme": themes[theme], ...extraSettings };
   const settingsFile = join(profile, "User/settings.json");
@@ -453,6 +471,7 @@ async function session(
   await pause(4000);
   return {
     vscode,
+    close,
     window,
     keys,
     type,
@@ -614,7 +633,7 @@ const groups = [
       await pause(300);
       await keys("Tab");
       await frame("new-file", { focus: ".suggest-widget" });
-      await s.vscode.close();
+      await s.close();
     },
   },
   {
@@ -634,7 +653,7 @@ const groups = [
       await palette("Ingestron: Show generated files");
       await pause(1500);
       await frame("preview");
-      await s.vscode.close();
+      await s.close();
     },
   },
   {
@@ -657,7 +676,7 @@ const groups = [
       await goto(lineOf("standard.yaml", "mode: incremental"), 15);
       await pause(1500);
       await frame("reference", { below: await webviewBottom(window, "auxiliarybar") });
-      await s.vscode.close();
+      await s.close();
     },
   },
   {
@@ -725,6 +744,30 @@ const groups = [
         );
         await keys("Escape", "Meta+S");
         await drag("panel", "top", 600);
+        // The log shows the time of each run. Show the same times in every capture,
+        // and not the hour it was taken: the first run at 09:30:00, the others
+        // as many seconds after it as they really were.
+        await s.window.evaluate(() => {
+          const seconds = (time) =>
+            time.split(":").reduce((total, part) => total * 60 + Number(part), 0);
+          const clock = (total) =>
+            [Math.floor(total / 3600), Math.floor(total / 60) % 60, total % 60]
+              .map((part) => String(part).padStart(2, "0"))
+              .join(":");
+          const texts = [];
+          for (const line of document.querySelectorAll(".part.panel .view-line")) {
+            const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+            while (walker.nextNode()) texts.push(walker.currentNode);
+          }
+          let first;
+          for (const node of texts) {
+            node.textContent = node.textContent.replace(/\b\d{2}:\d{2}:\d{2}\b/g, (time) => {
+              first ??= seconds(time);
+              return clock(9.5 * 3600 + seconds(time) - first);
+            });
+          }
+          if (first === undefined) throw new Error("auto-apply: the log shows no times");
+        });
         await frame("auto-apply", { include: ["panel", "statusbar"] });
         await palette("Ingestron: Turn auto-apply on or off");
         await palette("View: Toggle Status Bar Visibility");
@@ -759,7 +802,7 @@ const groups = [
       await palette("Ingestron: Prepare platform request");
       await pause(2000);
       await frame("platform-request", { until: "Once the values are set" });
-      await s.vscode.close();
+      await s.close();
     },
   },
   {
@@ -786,7 +829,7 @@ const groups = [
       }
       await open("flows/orders.yaml");
       await frame("first-project");
-      await s.vscode.close();
+      await s.close();
     },
   },
   {
@@ -804,7 +847,9 @@ const groups = [
       );
       const { window, palette, open, show, drag, fold, frame, resize, pause } = s;
       await show("sidebar", false);
-      await open("shop/flows/orders.yaml");
+      // A retail file, so the open project has two environments: dev selected
+      // with a check, prod with a circle.
+      await open("retail/connections/shop.yaml");
       if (wanted("project-view")) {
         await palette("Ingestron: Show reference");
         await pause(1500);
@@ -827,14 +872,21 @@ const groups = [
         await pause(800);
         await frame("context-menu", { focus: ".context-view .monaco-menu" });
       }
-      await s.vscode.close();
+      await s.close();
     },
   },
 ];
+
+const shotNames = groups.flatMap((group) => group.shots);
+for (const name of only ?? []) {
+  if (!shotNames.includes(name))
+    throw new Error(`--only: no shot ${name}; the shots are ${shotNames.join(", ")}`);
+}
 
 for (const theme of themeNames) {
   for (const group of groups) {
     if (group.shots.some(wanted)) await group.run(theme);
   }
 }
+rmSync(extensions, { recursive: true, force: true });
 process.exit(0);
