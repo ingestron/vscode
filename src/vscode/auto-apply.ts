@@ -7,7 +7,7 @@ import { run } from "@ingestron/cli";
 import * as vscode from "vscode";
 import { activity, triggers } from "../features/auto-apply.js";
 import type { Project } from "@ingestron/authoring";
-import { contextAt, onProjectChange, projectAt } from "./state.js";
+import { contextAt, environmentOf, onProjectChange, projectAt } from "./state.js";
 
 const key = "ingestron.autoApply";
 
@@ -29,8 +29,10 @@ export function registerAutoApply(
       await context.workspaceState.update(key, on);
       show();
       const here = current();
+      // Without a project file in front, nothing applies until a save.
+      const when = here ? "now, then after each save" : "after each save";
       output.appendLine(
-        `${new Date().toTimeString().slice(0, 8)}  auto-apply ${on ? "on: applying every environment now, then after each save" : "off"}`,
+        `${new Date().toTimeString().slice(0, 8)}  auto-apply ${on ? `on: applying every environment ${when}` : "off"}`,
       );
       output.show(true);
       if (on && here) apply(here.project);
@@ -85,5 +87,9 @@ function applyNow(project: Project, output: vscode.OutputChannel): void {
   let text = "";
   const args = ["apply", "--no-diff", "--definitions", folder, "--out", join(folder, "build")];
   run(args, { cwd: folder, write: (chunk) => (text += chunk) });
-  output.append(activity(text, new Date()));
+  const shown = {
+    environments: project.environments,
+    selected: environmentOf(project) ?? "default",
+  };
+  output.append(activity(text, new Date(), shown));
 }
