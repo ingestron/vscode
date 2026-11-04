@@ -1,6 +1,6 @@
 // The Project view in the Ingestron side bar: each project's environments
-// (click one to select it for problems and previews) and the actions on the project. It reads the same
-// state as the status bar and keeps nothing of its own.
+// (click one to select it for problems, previews and the platform request) and the actions on
+// the project. It reads the same state as the status bar and keeps nothing of its own.
 import { basename, dirname, join } from "node:path";
 import * as vscode from "vscode";
 import { parse } from "yaml";
