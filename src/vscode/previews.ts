@@ -49,6 +49,7 @@ function textOf(uri: vscode.Uri): string {
   const here = projectAt(vscode.Uri.file(join(folder, "project.yaml")));
   if (!here) return `The project in ${folder} is not there any more.\n`;
   const files = generatedFiles(here.project, environment || undefined);
-  if (!Array.isArray(files)) return `The definitions have problems:\n${files.problems}\n`;
+  if (!Array.isArray(files))
+    return `Nothing is generated while plan would stop:\n\n${files.problems}\n`;
   return files.find((item) => item.path === file)?.text ?? `${file} is not generated now.\n`;
 }
