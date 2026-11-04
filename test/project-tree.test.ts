@@ -66,6 +66,20 @@ describe("projectTree", () => {
     for (const node of actions) expect(node.command?.args).toEqual([{ uri: "/work/retail" }]);
   });
 
+  it("says Plan, Apply and Check work on every environment, and what the selected one is for", () => {
+    const nodes = projectTree([retail]);
+    const tooltip = (label: string) => nodes.find((node) => node.label === label)?.tooltip;
+    expect(tooltip("Check")).toBe("Check that build/ is up to date, for every environment");
+    expect(tooltip("Plan")).toBe("Show what would change in build/, for every environment");
+    expect(tooltip("Apply")).toBe(
+      "Write every environment's files to build/, one folder for each platform",
+    );
+    expect(tooltip("Environments")).toBe(
+      "Problems, previews and the platform request show the selected environment. Plan, Apply and Check work on every environment together.",
+    );
+    expect(tooltip("Prepare platform request")).toBe("For the selected environment");
+  });
+
   it("passes the folder's path as it is when no uri is made from it", () => {
     const check = projectTree([retail]).find((node) => node.label === "Check");
     expect(check?.command?.args).toEqual(["/work/retail"]);

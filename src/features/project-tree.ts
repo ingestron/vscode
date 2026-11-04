@@ -1,5 +1,7 @@
 // What the Project view shows: for each project its environments (the chosen
-// one marked; clicking one selects it) and the actions that run on it.
+// one marked; clicking one selects it for problems, previews and the platform
+// request) and the actions that run on it. Plan, Apply and Check generate every
+// environment together, whichever is selected.
 
 import { basename, sep } from "node:path";
 
@@ -16,6 +18,8 @@ export function isProjectManifest(path: string): boolean {
 export interface TreeNode {
   label: string;
   description?: string;
+  /** What the row is for, on hover. */
+  tooltip?: string;
   /** A codicon name, without the `$(…)`. */
   icon: string;
   /** Tells rows with the same label apart among their siblings; the label when absent. */
@@ -26,7 +30,7 @@ export interface TreeNode {
   folder?: string;
 }
 
-/** A project as the view needs it. `chosen` is the environment commands use now. */
+/** A project as the view needs it. `chosen` is the environment problems and previews show now. */
 export interface ProjectInfo {
   folder: string;
   id: string;
@@ -34,12 +38,32 @@ export interface ProjectInfo {
   chosen?: string;
 }
 
-const actions = [
-  { id: "ingestron.check", label: "Check", icon: "pass" },
-  { id: "ingestron.plan", label: "Plan", icon: "checklist" },
-  { id: "ingestron.apply", label: "Apply", icon: "play" },
+const actions: { id: string; label: string; icon: string; tooltip?: string }[] = [
+  {
+    id: "ingestron.check",
+    label: "Check",
+    icon: "pass",
+    tooltip: "Check that build/ is up to date, for every environment",
+  },
+  {
+    id: "ingestron.plan",
+    label: "Plan",
+    icon: "checklist",
+    tooltip: "Show what would change in build/, for every environment",
+  },
+  {
+    id: "ingestron.apply",
+    label: "Apply",
+    icon: "play",
+    tooltip: "Write every environment's files to build/, one folder for each platform",
+  },
   { id: "ingestron.compareEnvironments", label: "Compare environments", icon: "diff" },
-  { id: "ingestron.platformRequest", label: "Prepare platform request", icon: "mail" },
+  {
+    id: "ingestron.platformRequest",
+    label: "Prepare platform request",
+    icon: "mail",
+    tooltip: "For the selected environment",
+  },
   { id: "ingestron.showGenerated", label: "Show generated files", icon: "file-code" },
 ];
 
@@ -78,13 +102,20 @@ function projectNodes(project: ProjectInfo, uriOf: (folder: string) => unknown):
       : [
           {
             label: "Environments",
+            tooltip:
+              "Problems, previews and the platform request show the selected environment. Plan, Apply and Check work on every environment together.",
             icon: "server-environment",
             children: project.environments.map((name) => environmentNode(project, name)),
           },
         ];
   return [
     ...environments,
-    ...actions.map(({ id, label, icon }) => ({ label, icon, command: { id, args: [target] } })),
+    ...actions.map(({ id, label, icon, tooltip }) => ({
+      label,
+      ...(tooltip && { tooltip }),
+      icon,
+      command: { id, args: [target] },
+    })),
   ];
 }
 
