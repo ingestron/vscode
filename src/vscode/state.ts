@@ -16,11 +16,17 @@ import {
 export interface Here {
   project: Project;
   file: string;
-  /** For a preview of generated files: the environment it shows, which commands then use. */
+  /**
+   * For a preview of generated files: the environment it shows, which Show generated files,
+   * Compare with build and Prepare platform request then use. Plan, Apply and Check take none.
+   */
   environment?: string;
 }
 
-/** The environment for commands here: a preview's own, else the project's chosen one. */
+/**
+ * The environment for Show generated files, Compare with build and Prepare platform request
+ * here: a preview's own, else the project's chosen one.
+ */
 export function environmentHere(here: Here): string | undefined {
   return here.environment ?? environmentOf(here.project);
 }
