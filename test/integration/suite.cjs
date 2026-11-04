@@ -836,8 +836,9 @@ async function quickFix(flow, range) {
 }
 
 /**
- * An unset ${envvar:…} is information, not an error, and naming it in .env
- * clears it. The connection and .env are restored after.
+ * An unset ${envvar:…} is information, not an error: in a Databricks project
+ * the deploying pipeline supplies it, which the information says. Naming it in
+ * .env clears it. The connection and .env are restored after.
  */
 async function unsetVariable(folder) {
   const connection = vscode.Uri.file(path.join(folder, "connections/shop.yaml"));
@@ -853,7 +854,10 @@ async function unsetVariable(folder) {
     "the ENVVAR_MISSING information",
   );
   assert.equal(found.severity, vscode.DiagnosticSeverity.Information);
-  assert.match(found.message, /INGT_IT_UNSET isn't set; add it to \.env/);
+  assert.match(
+    found.message,
+    /^INGT_IT_UNSET is supplied when deploying, as `BUNDLE_VAR_ingt_it_unset` \(databricks\)\. Plan does not read it, so it needs no \.env\.dev entry\.$/,
+  );
   const errors = vscode.languages
     .getDiagnostics()
     .flatMap(([, items]) => items)
