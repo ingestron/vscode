@@ -820,7 +820,7 @@ const groups = [
       await show("panel", false);
       await show("sidebar", true);
       await drag("sidebar", "right", 280);
-      for (const folder of ["build", "dev", "tables"]) {
+      for (const folder of ["build", "duckdb", "dev", "tables"]) {
         await window
           .locator(".part.sidebar .monaco-list-row", { hasText: new RegExp(`^${folder}$`) })
           .first()
