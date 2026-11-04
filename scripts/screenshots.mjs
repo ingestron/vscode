@@ -865,6 +865,13 @@ const groups = [
         // A wide side bar, and the menu opened beside the folder's name: it
         // covers no name in the tree and no line in the editor.
         await drag("sidebar", "right", 440);
+        // Opening retail's file expanded it in the Explorer; folded, shop's row is
+        // high enough for the menu to open below it, whatever VS Code adds to it.
+        const retail = window
+          .locator(".part.sidebar .monaco-list-row", { hasText: /^retail$/ })
+          .first();
+        if ((await retail.getAttribute("aria-expanded")) === "true") await retail.click();
+        await pause(500);
         await window
           .locator(".part.sidebar .monaco-list-row", { hasText: /^shop$/ })
           .first()
