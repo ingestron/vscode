@@ -20,7 +20,7 @@ export async function selectEnvironment(
   const picked = named
     ? here.project.environments.find((environment) => environment === name)
     : await vscode.window.showQuickPick(here.project.environments, {
-        placeHolder: "Environment for problems and previews",
+        placeHolder: "Environment for problems, previews and the platform request",
       });
   if (!picked) return;
   chooseEnvironment(here.project, picked);
