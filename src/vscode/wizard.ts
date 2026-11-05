@@ -1,11 +1,10 @@
-// Ingestron: New project. The init questions as pickers and input boxes;
-// then the CLI's own `init` with every answer as a flag, and an offer to open
-// the new folder when it is outside the workspace.
-import { existsSync } from "node:fs";
-import { isAbsolute, join } from "node:path";
-import { nameProblem, projectId, run, type Template } from "@ingestron/cli";
+// Ingestron: New project. Pickers for what picks the project (a starter, or a connection, its
+// reachability and route), then the folder; the CLI's own `init` writes the project, with
+// REPLACE_ME where a value cannot be known, and README.md, which opens to say what to write.
+import { join } from "node:path";
+import { run } from "@ingestron/cli";
 import * as vscode from "vscode";
-import { chooseProject, type ProjectChoice } from "./wizard-choices.js";
+import { chooseProject } from "./wizard-choices.js";
 import { chooseStart, chooseStarter } from "./wizard-starters.js";
 
 /** Registers the New project command. */
@@ -18,16 +17,16 @@ export function registerWizard(
   );
 }
 
-/** What to create first (template and answers), then where: the folder dialog comes last. */
+/** What to create first, then where: the folder dialog comes last, and its name is the id. */
 async function newProject(output: vscode.OutputChannel): Promise<void> {
   const start = await chooseStart();
-  const answers =
+  const flags =
     start === "starter"
-      ? await askStarter()
+      ? await starterFlags()
       : start === "connection"
-        ? await askConnection()
+        ? await connectionFlags()
         : undefined;
-  if (!answers) return;
+  if (!flags) return;
   const folder = (
     await vscode.window.showOpenDialog({
       canSelectFolders: true,
@@ -38,25 +37,44 @@ async function newProject(output: vscode.OutputChannel): Promise<void> {
   if (!folder) return;
   output.clear();
   output.show(true);
-  const code = run(["init", folder.fsPath, ...answers, "--yes"], {
+  let written = "";
+  const code = run(["init", folder.fsPath, ...flags, "--yes"], {
     cwd: folder.fsPath,
-    write: (text) => output.append(text),
+    write: (text) => {
+      written += text;
+      output.append(text);
+    },
   });
   if (code !== 0) return;
-  await vscode.window.showTextDocument(vscode.Uri.file(join(folder.fsPath, "project.yaml")));
-  await offerFolder(folder);
+  const readme = vscode.Uri.file(join(folder.fsPath, "README.md"));
+  await vscode.commands.executeCommand("markdown.showPreview", readme);
+  await offerFolder(folder, createdMessage(written));
+}
+
+/** What init said is still to write, as the message after creating the project. */
+export function createdMessage(output: string): string {
+  // init's own line, not plan's, which ends "; ingestron check fails…".
+  const found = /^(\d+) values? (?:are|is) still REPLACE_ME(:| \(README)/m.exec(output);
+  if (!found) return "Created the project. Nothing to replace: it runs as written.";
+  const values = found[1] === "1" ? "1 value is" : `${found[1]} values are`;
+  // A README.md that was there is kept, so the Ingestron output lists the values instead.
+  const where = found[2] === ":" ? "README.md lists them" : "the Ingestron output lists them";
+  return `Created the project. ${values} still REPLACE_ME: ${where}.`;
 }
 
 /**
- * Explorer shows the workspace, so a project created outside it would stay
- * hidden: offer to open its folder, or to add it beside the others.
+ * Explorer shows the workspace, so a project created outside it would stay hidden: offer to
+ * open its folder, or to add it beside the others.
  */
-async function offerFolder(folder: vscode.Uri): Promise<void> {
-  if (vscode.workspace.getWorkspaceFolder(folder)) return;
+async function offerFolder(folder: vscode.Uri, message: string): Promise<void> {
+  if (vscode.workspace.getWorkspaceFolder(folder)) {
+    void vscode.window.showInformationMessage(message);
+    return;
+  }
   const open = "Open folder";
   const add = "Add to workspace";
   const picked = await vscode.window.showInformationMessage(
-    `Created the project in ${folder.fsPath}. Open its folder to see its flows and contracts in Explorer; next, change the flow in flows/ to your own source.`,
+    `${message} Open its folder to see it in Explorer.`,
     open,
     add,
   );
@@ -67,112 +85,23 @@ async function offerFolder(folder: vscode.Uri): Promise<void> {
   }
 }
 
-/** A starter's answers as init flags: its name, environments, any standard, and its questions. */
-async function askStarter(): Promise<string[] | undefined> {
+/** A starter as init's flag. */
+async function starterFlags(): Promise<string[] | undefined> {
   const choice = await chooseStarter();
-  const named = choice && (await nameAndEnvironments(choice.id, choice.environments));
-  const standard =
-    named &&
-    (await vscode.window.showInputBox({
-      prompt: "Your organisation's standard: path or Git URL, or keep the starter's own",
-    }));
-  if (!choice || !named || standard === undefined) return undefined;
-  const values = await questions(choice.template);
-  return (
-    values && ["--template", choice.template.name, ...named, ...standardFlags(standard), ...values]
-  );
+  return choice && ["--template", choice.template.name];
 }
 
-/**
- * The standard as an init flag. init runs in the new project's folder, so a
- * relative path to a file in the workspace is made absolute; anything else,
- * such as a Git URL, goes to init as written.
- */
-function standardFlags(text: string): string[] {
-  const spec = text.trim();
-  if (!spec) return [];
-  const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-  const inWorkspace = root && !isAbsolute(spec) ? join(root, spec) : undefined;
-  return ["--standard", inWorkspace && existsSync(inWorkspace) ? inWorkspace : spec];
-}
-
-async function askConnection(): Promise<string[] | undefined> {
+/** A connection, its reachability and its route as init's flags. */
+async function connectionFlags(): Promise<string[] | undefined> {
   const choice = await chooseProject();
-  return choice && (await ask(choice));
-}
-
-/** The name and environments as init flags, checked as you type with the command's rules. */
-async function nameAndEnvironments(
-  suggested: string,
-  known: string[],
-): Promise<string[] | undefined> {
-  const name = await vscode.window.showInputBox({
-    prompt: "Project name: lowercase letters, digits and underscores",
-    value: projectId(suggested),
-    validateInput: (text) => nameProblem(text, "project"),
-  });
-  if (name === undefined) return undefined;
-  const environments = await vscode.window.showInputBox({
-    prompt: "Environments, separated by commas",
-    value: known.join(", "),
-    validateInput: environmentsProblem,
-  });
-  if (environments === undefined) return undefined;
-  return [
-    "--name",
-    name,
-    ...environments
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .flatMap((item) => ["--env", item]),
-  ];
-}
-
-/** The answers as init flags, or undefined when the user cancels. */
-async function ask(choice: ProjectChoice): Promise<string[] | undefined> {
-  const template = choice.template;
-  const named = await nameAndEnvironments(choice.connector, ["dev", "prod"]);
-  if (!named) return undefined;
-  const standard = await vscode.window.showInputBox({
-    prompt: "Your organisation's standard: path or Git URL, or keep the route's own",
-  });
-  if (standard === undefined) return undefined;
-  const values = await questions(template);
-  if (!values) return undefined;
-  return [
-    "--connector",
-    choice.connector,
-    "--connectivity",
-    choice.connectivity,
-    "--via",
-    choice.via,
-    ...named,
-    ...standardFlags(standard),
-    ...values,
-  ];
-}
-
-async function questions(template: Template | undefined): Promise<string[] | undefined> {
-  const flags: string[] = [];
-  for (const question of template?.questions ?? []) {
-    const answer = await vscode.window.showInputBox({
-      prompt: question.ask,
-      value: question.default,
-    });
-    if (answer === undefined) return undefined;
-    // As in the terminal: an empty answer takes the default.
-    flags.push("--set", `${question.value}=${answer.trim() || question.default}`);
-  }
-  return flags;
-}
-
-/** The first environment name that is not valid, with the command's own rule. */
-function environmentsProblem(text: string): string | undefined {
-  const names = text
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-  if (names.length === 0) return "Name at least one environment, such as dev.";
-  return names.map((item) => nameProblem(item, "environment")).find(Boolean);
+  return (
+    choice && [
+      "--connector",
+      choice.connector,
+      "--connectivity",
+      choice.connectivity,
+      "--via",
+      choice.via,
+    ]
+  );
 }
