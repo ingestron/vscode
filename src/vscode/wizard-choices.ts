@@ -1,8 +1,8 @@
 // Categorised source discovery and compatible routes come from the CLI catalogue.
-import { projectRecipe, projectRoutes, projectSources, type ProjectRecipe } from "@ingestron/cli";
+import { projectRoutes, projectSources } from "@ingestron/cli";
 import * as vscode from "vscode";
-/** The source choices and composed questions for New project. */
-export interface ProjectChoice extends ProjectRecipe {
+/** The source choices for New project: init composes the project from them. */
+export interface ProjectChoice {
   connector: string;
   via: string;
   connectivity: string;
@@ -41,7 +41,6 @@ export async function chooseProject(): Promise<ProjectChoice | undefined> {
     connector: source.id,
     via: route.via,
     connectivity,
-    ...projectRecipe(source.id, route.via, connectivity),
   };
 }
 async function chooseNetwork(connector: string): Promise<string | undefined> {

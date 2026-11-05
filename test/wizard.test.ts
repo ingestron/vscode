@@ -1,5 +1,5 @@
 // Exercise the actual command and shared CLI with synthetic picker/input responses.
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, expect, it, vi } from "vitest";
@@ -14,11 +14,16 @@ const state = vi.hoisted(() => ({
   folderAsked: false,
   suggested: [] as (string | undefined)[],
   workspace: "",
+  executed: [] as [string, unknown][],
+  messages: [] as string[],
 }));
 vi.mock("vscode", () => ({
   commands: {
     registerCommand: (_id: string, action: () => Promise<void>) => {
       state.command = action;
+    },
+    executeCommand: async (command: string, argument: unknown) => {
+      state.executed.push([command, argument]);
     },
   },
   Uri: { file: (fsPath: string) => ({ fsPath }) },
@@ -49,12 +54,16 @@ vi.mock("vscode", () => ({
       return [{ fsPath: state.folder }];
     },
     showTextDocument: async () => {},
+    showInformationMessage: async (message: string) => {
+      state.messages.push(message);
+      return undefined;
+    },
     showErrorMessage: async (message: string) => {
       throw new Error(message);
     },
   },
 }));
-import { registerWizard } from "../src/vscode/wizard.js";
+import { createdMessage, registerWizard } from "../src/vscode/wizard.js";
 beforeEach(() => {
   state.choices = [];
   state.inputs = [];
@@ -63,6 +72,8 @@ beforeEach(() => {
   state.suggested = [];
   state.output = "";
   state.workspace = "";
+  state.executed = [];
+  state.messages = [];
   state.folder = join(mkdtempSync(join(tmpdir(), "ingestron-wizard-")), "project");
   registerWizard(
     { subscriptions: [] } as unknown as vscode.ExtensionContext,
@@ -75,7 +86,7 @@ beforeEach(() => {
     } as unknown as vscode.OutputChannel,
   );
 });
-it("creates the selected ADF connection with the shared CLI questions", async () => {
+it("asks only the connection, its reachability and route, then opens README.md", async () => {
   state.choices = ["From a connection", "All sources", "postgresql", "private", "adf-databricks"];
   await state.command!();
   expect(state.menus[4]).toEqual([
@@ -84,14 +95,23 @@ it("creates the selected ADF connection with the shared CLI questions", async ()
     "ADF ingestion into DuckDB tables",
     "ADF ingestion, ending at the landed files",
   ]);
+  expect(state.menus).toHaveLength(5);
+  expect(state.suggested).toEqual([]);
   expect(state.folderAsked).toBe(true);
-  expect(state.output).toContain("Created");
   expect(readFileSync(join(state.folder, "connections/postgresql.yaml"), "utf8")).toContain(
-    "connector: postgresql",
+    "server: REPLACE_ME",
   );
   expect(readFileSync(join(state.folder, "standard.yaml"), "utf8")).toContain("adf@2");
-  expect(state.menus).toHaveLength(5);
+  // The project id comes from the folder, as in the terminal.
+  expect(readFileSync(join(state.folder, "project.yaml"), "utf8")).toContain("id: project");
+  expect(state.executed).toEqual([
+    ["markdown.showPreview", { fsPath: join(state.folder, "README.md") }],
+  ]);
+  expect(state.messages[0]).toMatch(
+    /^Created the project\. \d+ values are still REPLACE_ME: README\.md lists them\.$/,
+  );
 });
+
 it("offers both routes for public files and creates the chosen direct project", async () => {
   state.choices = ["From a connection", "Files and storage", "files", "public", "databricks"];
   await state.command!();
@@ -103,6 +123,7 @@ it("offers both routes for public files and creates the chosen direct project", 
   expect(state.output).toContain("Created");
   expect(readFileSync(join(state.folder, "standard.yaml"), "utf8")).not.toContain("adf@2");
 });
+
 it.each([0, 1, 2, 3, 4])(
   "cancels at source-choice step %s without asking for a folder",
   async (step) => {
@@ -112,43 +133,20 @@ it.each([0, 1, 2, 3, 4])(
     expect(existsSync(state.folder)).toBe(false);
   },
 );
-it.each([1, 2, 3, 4])(
-  "cancels a connection at input %s (name, environments, standard, a question) without writing",
-  async (step) => {
-    state.choices = ["From a connection", "All sources", "postgresql", "private", "adf-databricks"];
-    state.inputs = ["orders", "dev", "", "abfss://raw@acct.dfs.core.windows.net"].map(
-      (value, index) => (index === step - 1 ? undefined : value),
-    );
-    await state.command!();
-    expect(state.suggested).toHaveLength(step);
-    expect(state.folderAsked).toBe(false);
-    expect(existsSync(state.folder)).toBe(false);
-  },
-);
-it("creates a project from a starter, with the starter's environments", async () => {
+
+it("creates a project from a starter, with the starter's environments, and asks nothing else", async () => {
   state.choices = ["From a starter", "duckdb"];
   await state.command!();
   expect(state.menus[0]).toEqual(["From a connection", "From a starter"]);
   expect(state.menus[1]).toContain("DuckDB on a laptop");
-  expect(state.output).toContain("Created");
+  expect(state.suggested).toEqual([]);
   expect(existsSync(join(state.folder, "samples/orders.csv"))).toBe(true);
   expect(readFileSync(join(state.folder, "standard.yaml"), "utf8")).toContain("duckdb@2");
   const project = readFileSync(join(state.folder, "project.yaml"), "utf8");
   expect(project).toContain("dev: {}");
   expect(project).not.toContain("prod");
+  expect(state.messages[0]).toBe("Created the project. Nothing to replace: it runs as written.");
 });
-it.each([1, 2, 3, 4])(
-  "cancels a starter at question %s without asking for a folder or writing",
-  async (step) => {
-    state.choices = ["From a starter", "minimal"];
-    state.inputs = ["shop", "dev", "", "/Volumes/x"].map((value, index) =>
-      index === step - 1 ? undefined : value,
-    );
-    await state.command!();
-    expect(state.folderAsked).toBe(false);
-    expect(existsSync(state.folder)).toBe(false);
-  },
-);
 
 it("cancels choosing a starter without asking for a folder", async () => {
   state.choices = ["From a starter"];
@@ -157,47 +155,24 @@ it("cancels choosing a starter without asking for a folder", async () => {
   expect(existsSync(state.folder)).toBe(false);
 });
 
-it("suggests the starter's project id as the name, and takes a standard", async () => {
-  const outside = mkdtempSync(join(tmpdir(), "ingestron-standard-"));
-  mkdirSync(outside, { recursive: true });
-  const standard = join(outside, "acme.yaml");
-  const own = join(
-    import.meta.dirname,
-    "../node_modules/@ingestron/cli/project-templates/private-files/standard.yaml",
-  );
-  writeFileSync(standard, readFileSync(own, "utf8").replace(/^id: .*$/m, "id: acme"));
-  state.choices = ["From a starter", "private-files"];
-  state.inputs = ["<default>", "dev", standard];
-  await state.command!();
-  expect(state.suggested[0]).toBe("stores");
-  expect(state.output).toContain("Created");
-  expect(readFileSync(join(state.folder, "standard.yaml"), "utf8")).toContain("id: acme");
-});
-
-it("uses a starter question's default when its answer is left empty", async () => {
+it("keeps a README.md the folder already has, and still opens it", async () => {
+  const { mkdirSync } = await import("node:fs");
+  mkdirSync(state.folder, { recursive: true });
+  writeFileSync(join(state.folder, "README.md"), "# Ours\n");
   state.choices = ["From a starter", "minimal"];
-  state.inputs = ["<default>", "dev", "", "   "];
   await state.command!();
-  expect(state.output).toContain("Created");
-  expect(readFileSync(join(state.folder, "project.yaml"), "utf8")).toContain(
-    "landing: /Volumes/dev/landing/shop",
+  expect(readFileSync(join(state.folder, "README.md"), "utf8")).toBe("# Ours\n");
+  expect(state.executed[0]?.[0]).toBe("markdown.showPreview");
+  expect(state.messages[0]).toBe(
+    "Created the project. 1 value is still REPLACE_ME: the Ingestron output lists them.",
   );
 });
 
-it("reads a standard's relative path from the workspace, and ignores spaces around it", async () => {
-  state.workspace = mkdtempSync(join(tmpdir(), "ingestron-workspace-"));
-  mkdirSync(join(state.workspace, "standards"));
-  const own = join(
-    import.meta.dirname,
-    "../node_modules/@ingestron/cli/project-templates/minimal/standard.yaml",
+it("reads the count from what init printed", () => {
+  expect(createdMessage("8 values are still REPLACE_ME: README.md lists each one…\n")).toBe(
+    "Created the project. 8 values are still REPLACE_ME: README.md lists them.",
   );
-  writeFileSync(
-    join(state.workspace, "standards/acme.yaml"),
-    readFileSync(own, "utf8").replace(/^id: .*$/m, "id: acme"),
+  expect(createdMessage("Nothing to replace: the project runs as written.\n")).toBe(
+    "Created the project. Nothing to replace: it runs as written.",
   );
-  state.choices = ["From a starter", "minimal"];
-  state.inputs = ["<default>", "dev", "  standards/acme.yaml  "];
-  await state.command!();
-  expect(state.output).toContain("Created");
-  expect(readFileSync(join(state.folder, "standard.yaml"), "utf8")).toContain("id: acme");
 });
