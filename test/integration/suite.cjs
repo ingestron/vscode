@@ -25,6 +25,7 @@ async function until(check, what) {
 }
 
 const fs = require("node:fs");
+const { fillStarter } = require("./starters.cjs");
 
 /** A generated file changed on disk, outside the editor, then deleted: the warning follows both. */
 async function editedOnDisk(folder) {
@@ -443,6 +444,7 @@ async function coreLoop() {
     },
   );
   fs.rmSync(path.join(folder, "build"), { recursive: true, force: true });
+  fillStarter(folder, "minimal");
   const file = (name) => vscode.Uri.file(path.join(folder, name));
 
   // 1. A contract from a sample with codes that must stay text.
@@ -557,10 +559,11 @@ async function clickedProject(active) {
       folder,
       { recursive: true, filter: (item) => !item.includes(`${path.sep}build`) },
     );
+    fillStarter(folder, "retail");
     const manifest = path.join(folder, "project.yaml");
     fs.writeFileSync(
       manifest,
-      fs.readFileSync(manifest, "utf8").replace(/^ {2}dev: \{\}/m, `  ${environment}: {}`),
+      fs.readFileSync(manifest, "utf8").replace(/^ {2}dev:$/m, `  ${environment}:`),
     );
     return folder;
   };
@@ -638,6 +641,7 @@ async function projectViewFollows(folder, flow) {
     second,
     { recursive: true, filter: (item) => !item.includes(`${path.sep}build`) },
   );
+  fillStarter(second, "retail");
   const items = async () =>
     (await vscode.commands.executeCommand("ingestron.projectItems")).map((item) => ({
       // The workspace's own folder is described by its whole path, the other by its place in it.
@@ -846,7 +850,10 @@ async function unsetVariable(folder) {
   const kept = fs.readFileSync(connection.fsPath, "utf8");
   fs.writeFileSync(
     connection.fsPath,
-    kept.replace("${values.storage}/shop", "${envvar:INGT_IT_UNSET}/shop"),
+    kept.replace(
+      "abfss://landing@${values.storage_account}.dfs.core.windows.net/shop",
+      "${envvar:INGT_IT_UNSET}/shop",
+    ),
   );
   const unset = (item) => codeOf(item) === "ENVVAR_MISSING";
   const found = await until(

@@ -4,6 +4,7 @@ import { cpSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 import { runTests } from "@vscode/test-electron";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -13,6 +14,7 @@ const userData = mkdtempSync(join(tmpdir(), "ingestron-vscode-"));
 cpSync(join(here, "../../node_modules/@ingestron/cli/project-templates/retail"), workspace, {
   recursive: true,
 });
+createRequire(import.meta.url)("./starters.cjs").fillStarter(workspace, "retail");
 // Set when this runs from inside another Electron app (such as VS Code); it
 // would make the downloaded VS Code start as plain Node.js.
 delete process.env.ELECTRON_RUN_AS_NODE;
