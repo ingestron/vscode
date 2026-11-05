@@ -1,17 +1,11 @@
 // New project from a starter: one of the CLI's built-in templates, such as
-// DuckDB on a laptop, with the template's environments and project id offered.
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+// DuckDB on a laptop.
 import { builtInTemplates, type Template } from "@ingestron/cli";
 import * as vscode from "vscode";
-import { parse } from "yaml";
 
-/** The starter chosen, and the environments its project.yaml names. */
+/** The starter chosen. */
 export interface StarterChoice {
   template: Template;
-  environments: string[];
-  /** The starter's project id, which its connections and contracts are named for. */
-  id: string;
 }
 
 /** Connection first, as before, or a ready-made starter. */
@@ -51,14 +45,5 @@ export async function chooseStarter(): Promise<StarterChoice | undefined> {
       matchOnDetail: true,
     },
   );
-  if (!picked) return undefined;
-  const project = parse(readFileSync(join(picked.template.folder, "project.yaml"), "utf8")) as {
-    id?: string;
-    environments?: Record<string, unknown>;
-  };
-  return {
-    template: picked.template,
-    environments: Object.keys(project.environments ?? { dev: {} }),
-    id: project.id ?? picked.template.name,
-  };
+  return picked && { template: picked.template };
 }
