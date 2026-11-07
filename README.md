@@ -45,8 +45,18 @@ Documentation: [docs.ingestron.io](https://docs.ingestron.io/docs/tools/vscode).
 
 ## Install
 
-The extension is not in the Visual Studio Marketplace yet. Build it (Node 22.13
-or later, pnpm 10) and install the file it writes:
+Install [Ingestron from the Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=ingestron.ingestron-vscode),
+or search for "Ingestron" in the Extensions view, or run:
+
+```sh
+code --install-extension ingestron.ingestron-vscode
+```
+
+Open a folder that holds a `project.yaml`, or run **Ingestron: New project**.
+
+## Develop
+
+To build the extension and install your own copy (Node 22.13 or later, pnpm 10):
 
 ```sh
 pnpm install
@@ -54,9 +64,7 @@ pnpm package
 code --install-extension ingestron.vsix
 ```
 
-Open a folder that holds a `project.yaml`, or run **Ingestron: New project**.
-
-## Develop
+To work on it:
 
 ```sh
 pnpm install
