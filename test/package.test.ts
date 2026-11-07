@@ -37,4 +37,34 @@ describe("extension package", () => {
     });
     expect(manifest.homepage).toBe("https://docs.ingestron.io");
   });
+
+  it("has the brand icon, and a sidebar icon that follows the theme", () => {
+    const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+    // The Marketplace asks for a PNG, at least 128 pixels square.
+    expect(manifest.icon).toBe("media/icon.png");
+    const png = readFileSync(join(root, manifest.icon));
+    expect(png.subarray(1, 4).toString()).toBe("PNG");
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([128, 128]);
+    // The side bar's icon takes the theme's colour, so it names no colour of its own.
+    const sidebar = manifest.contributes.viewsContainers.secondarySidebar[0].icon;
+    expect(sidebar).toBe("media/ingestron.svg");
+    const svg = readFileSync(join(root, sidebar), "utf8");
+    expect(svg).toContain('fill="currentColor"');
+    expect(svg).not.toMatch(/#[0-9a-f]{3,6}/i);
+    const reference = manifest.contributes.views.ingestron.find(
+      (view: { id: string }) => view.id === "ingestron.reference",
+    );
+    expect(reference.icon).toBe(sidebar);
+  });
+
+  it("ships the icon but not the README's demonstration GIFs", () => {
+    const files = execFileSync("npx", ["vsce", "ls", "--no-dependencies"], {
+      cwd: root,
+      encoding: "utf8",
+    }).split("\n");
+    expect(files).toContain("media/icon.png");
+    expect(files).toContain("media/ingestron.svg");
+    // The Marketplace loads the README's images from GitHub; they would only add weight here.
+    expect(files.filter((file) => file.startsWith("media/readme/"))).toEqual([]);
+  }, 120_000);
 });
