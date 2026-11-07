@@ -16,3 +16,4 @@ CONTRIBUTING.md
 pnpm-lock.yaml
 .tmp/**
 pnpm-workspace.yaml
+media/readme/**

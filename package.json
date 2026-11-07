@@ -25,6 +25,21 @@
     "Programming Languages",
     "Linters"
   ],
+  "keywords": [
+    "ingestron",
+    "data ingestion",
+    "data engineering",
+    "databricks",
+    "azure data factory",
+    "synapse",
+    "duckdb",
+    "yaml"
+  ],
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#fbf8f3",
+    "theme": "light"
+  },
   "main": "./dist/extension.cjs",
   "activationEvents": [
     "workspaceContains:**/project.yaml"
@@ -109,7 +124,7 @@
         {
           "id": "ingestron",
           "title": "Ingestron",
-          "icon": "media/reference.svg"
+          "icon": "media/ingestron.svg"
         }
       ]
     },
@@ -124,7 +139,7 @@
           "type": "webview",
           "id": "ingestron.reference",
           "name": "Reference",
-          "icon": "media/reference.svg"
+          "icon": "media/ingestron.svg"
         }
       ]
     },
@@ -287,6 +302,7 @@
     "validate": "pnpm format:check && pnpm secrets:check && pnpm licences:check && node --test scripts/*.test.mjs && pnpm lint && pnpm typecheck && pnpm build && pnpm test",
     "test:integration": "node scripts/build.mjs && node test/integration/run.mjs",
     "screenshots": "node scripts/screenshots.mjs",
+    "gifs": "node scripts/gifs.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "secrets:check": "node scripts/scan-secrets.mjs",
