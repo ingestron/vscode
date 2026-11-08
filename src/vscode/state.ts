@@ -85,7 +85,7 @@ export function projectAt(uri: vscode.Uri): Here | undefined {
 export const previewScheme = "ingestron-generated";
 
 /** What a preview's URI names: its project folder, environment and generated file. */
-export function previewOf(uri: vscode.Uri) {
+export function previewOf(uri: vscode.Uri): { folder: string; environment: string; file: string } {
   const query = new URLSearchParams(uri.query);
   return {
     folder: query.get("folder") ?? "",

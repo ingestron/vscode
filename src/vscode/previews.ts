@@ -16,7 +16,11 @@ import { onProjectChange, previewOf, previewScheme, projectAt } from "./state.js
  * query holds the folder itself, so two projects with the same name and
  * output paths never share a preview.
  */
-export function previewUri(project: Project, environment: string | undefined, path: string) {
+export function previewUri(
+  project: Project,
+  environment: string | undefined,
+  path: string,
+): vscode.Uri {
   return vscode.Uri.from({
     scheme: previewScheme,
     path: `/${basename(project.folder)}/${environment ?? "default"}/${path}`,
