@@ -6,7 +6,7 @@
   "publisher": "ingestron",
   "private": true,
   "license": "Apache-2.0",
-  "author": "IntentLabs <hello@ingestron.io>",
+  "author": "Ingestron <hello@ingestron.io>",
   "homepage": "https://docs.ingestron.io",
   "repository": {
     "type": "git",

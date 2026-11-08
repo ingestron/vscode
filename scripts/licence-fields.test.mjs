@@ -32,5 +32,5 @@ test("LICENSE is the Apache License 2.0", () => {
 });
 
 test("NOTICE names the copyright holder", () => {
-  assert.match(read("NOTICE"), /Copyright 2026 Otrera Limited, trading as IntentLabs/);
+  assert.match(read("NOTICE"), /Copyright 2026 The Ingestron Authors/);
 });
