@@ -4,8 +4,23 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-execFileSync("node", ["scripts/build.mjs"], { cwd: root, stdio: "inherit" });
-execFileSync("npx", ["vsce", "package", "--no-dependencies", "--out", "ingestron.vsix"], {
+const revision = execFileSync("git", ["rev-parse", "HEAD"], {
   cwd: root,
-  stdio: "inherit",
-});
+  encoding: "utf8",
+}).trim();
+execFileSync("node", ["scripts/build.mjs"], { cwd: root, stdio: "inherit" });
+execFileSync(
+  "npx",
+  [
+    "vsce",
+    "package",
+    "--no-dependencies",
+    "--githubBranch",
+    revision,
+    "--baseImagesUrl",
+    `https://raw.githubusercontent.com/ingestron/vscode/${revision}/`,
+    "--out",
+    "ingestron.vsix",
+  ],
+  { cwd: root, stdio: "inherit" },
+);
