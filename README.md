@@ -45,6 +45,8 @@ Documentation: [docs.ingestron.io](https://docs.ingestron.io/docs/tools/vscode).
 
 ## Install
 
+Requires Visual Studio Code 1.104 or later.
+
 Install [Ingestron from the Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=ingestron.ingestron-vscode),
 or search for "Ingestron" in the Extensions view, or run:
 
@@ -52,36 +54,9 @@ or search for "Ingestron" in the Extensions view, or run:
 code --install-extension ingestron.ingestron-vscode
 ```
 
-Open a folder that holds a `project.yaml`, or run **Ingestron: New project**.
-
-## Develop
-
-To build the extension and install your own copy (Node 22.13 or later, pnpm 10):
-
-```sh
-pnpm install
-pnpm package
-code --install-extension ingestron.vsix
-```
-
-To work on it:
-
-```sh
-pnpm install
-pnpm validate          # format, licences, lint, types, bundle, unit tests
-pnpm test:integration  # in a downloaded VS Code
-pnpm gifs              # record the README's GIFs (run test:integration once first)
-```
-
-The editor features (problems, completion, hover, fixes) are plain functions in
-[`@ingestron/authoring`](https://www.npmjs.com/package/@ingestron/authoring),
-tested without VS Code; `src/vscode/` registers them with VS Code. The bundle
-is `dist/extension.cjs`; `scripts/build.mjs` copies the schemas, SQL templates,
-ADF recipes and project templates beside it, from the installed packages.
-
-`scripts/gifs.mjs` records `media/readme/definitions.gif` and `outcomes.gif`
-from a packaged build in a downloaded VS Code, using projects `ingestron init`
-creates. `concept.gif` is brand artwork and comes from outside this repository.
+Open a folder that holds a `project.yaml`, or run **Ingestron: New project**
+from the Command Palette. The extension includes its Ingestron dependencies;
+you do not need to install the CLI separately.
 
 ## Privacy
 

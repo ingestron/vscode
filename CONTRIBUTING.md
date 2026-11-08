@@ -4,6 +4,27 @@ Code here should make sense to someone who has never seen it: simple code,
 and documentation good enough to use it without reading the source. The rules
 below make that checkable.
 
+## Build and test
+
+Use Node.js 22.13 or later and pnpm 10. Clone the repository and run commands
+from its root:
+
+```sh
+git clone https://github.com/ingestron/vscode.git
+cd vscode
+pnpm install
+pnpm validate
+pnpm test:integration
+```
+
+The integration suite runs in a downloaded copy of VS Code. To package the
+extension and install the local build:
+
+```sh
+pnpm package
+code --install-extension ingestron.vsix
+```
+
 ## Code
 
 - **One direction of flow.** A package is a short pipeline of steps, one
@@ -39,8 +60,9 @@ import of another package's files or a relative path out of the package.
 
 User documentation lives in the documentation site,
 [ingestron/docs](https://github.com/ingestron/docs); change it there in the same
-release as the code. The README is the Marketplace page: what the extension does, how to install it
-and how to develop it.
+release as the code. The README is the Marketplace page: what the extension
+does, how to install it and how to start a project. Keep contributor setup
+instructions in this guide.
 
 ## Tests
 
