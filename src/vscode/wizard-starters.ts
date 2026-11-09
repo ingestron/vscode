@@ -1,6 +1,6 @@
 // New project from a starter: one of the CLI's built-in templates, such as
 // DuckDB on a laptop.
-import { builtInTemplates, type Template } from "@ingestron/cli";
+import { builtInTemplates, type Template } from "@ingestron/core";
 import * as vscode from "vscode";
 
 /** The starter chosen. */

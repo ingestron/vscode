@@ -2,7 +2,7 @@
 // inferred types, written as `ingestron contract` writes it, then opened.
 import { basename, dirname, join } from "node:path";
 import * as vscode from "vscode";
-import { contractFromSample } from "@ingestron/cli";
+import { contractFromSample } from "@ingestron/core";
 import { projectFolderOf } from "@ingestron/authoring";
 
 /** Registers the command, for the Explorer's menu on CSV and JSON files and the open file. */

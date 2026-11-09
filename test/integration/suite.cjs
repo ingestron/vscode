@@ -437,7 +437,7 @@ async function coreLoop() {
     "shop",
   );
   fs.cpSync(
-    path.join(__dirname, "../../node_modules/@ingestron/cli/project-templates/minimal"),
+    path.join(__dirname, "../../node_modules/@ingestron/core/project-templates/minimal"),
     folder,
     {
       recursive: true,
@@ -555,7 +555,7 @@ async function clickedProject(active) {
       "retail",
     );
     fs.cpSync(
-      path.join(__dirname, "../../node_modules/@ingestron/cli/project-templates/retail"),
+      path.join(__dirname, "../../node_modules/@ingestron/core/project-templates/retail"),
       folder,
       { recursive: true, filter: (item) => !item.includes(`${path.sep}build`) },
     );
@@ -637,7 +637,7 @@ async function projectViewFollows(folder, flow) {
   const second = path.join(folder, "second");
   // Inside the workspace, so the view finds it; a second workspace folder would restart VS Code.
   fs.cpSync(
-    path.join(__dirname, "../../node_modules/@ingestron/cli/project-templates/retail"),
+    path.join(__dirname, "../../node_modules/@ingestron/core/project-templates/retail"),
     second,
     { recursive: true, filter: (item) => !item.includes(`${path.sep}build`) },
   );

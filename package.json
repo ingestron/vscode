@@ -313,6 +313,7 @@
     "@ingestron/authoring": "^2.1.0",
     "@ingestron/cli": "^2.1.0",
     "@ingestron/config": "^1.5.0",
+    "@ingestron/core": "^1.0.0",
     "@ingestron/definitions": "^1.11.0",
     "@ingestron/generate": "^1.0.1",
     "@ingestron/pack-adf": "^2.0.0",
