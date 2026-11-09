@@ -4,9 +4,9 @@
 // opens in the tab itself, with Back; other pages open in the browser.
 import { referenceAt, referenceForDocs } from "@ingestron/authoring";
 import * as vscode from "vscode";
-import { referenceHtml } from "../features/reference-html.js";
-import { docsLink } from "./docs.js";
-import { environmentOf, projectAt, type Here } from "./state.js";
+import { referenceHtml } from "../../features/reference-html.js";
+import { docsLink } from "../editor/index.js";
+import { environmentOf, projectAt, type Here } from "../state/index.js";
 
 const viewId = "ingestron.reference";
 const openCommand = "ingestron.referenceOpen";

@@ -15,10 +15,10 @@ import {
   tableAtCursor,
   type Generated,
 } from "@ingestron/authoring";
-import { stoppedMessage } from "../features/stopped.js";
-import { previewUri, registerPreviews } from "./previews.js";
-import { selectEnvironment } from "./environment.js";
-import { contextAt, environmentHere, hereFor } from "./state.js";
+import { stoppedMessage } from "../../features/stopped.js";
+import { previewUri, registerPreviews } from "../editor/index.js";
+import { selectEnvironment } from "../state/index.js";
+import { contextAt, environmentHere, hereFor } from "../state/index.js";
 
 /** Registers the commands; `refresh` updates problems after the environment changes. */
 export function registerCommands(

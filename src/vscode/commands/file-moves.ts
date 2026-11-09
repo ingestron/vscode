@@ -3,7 +3,7 @@
 // find their code and one undo puts everything back.
 import * as vscode from "vscode";
 import { fileMoveEdits, inProject } from "@ingestron/authoring";
-import { projectAt, rangeIn, uriOf } from "./state.js";
+import { projectAt, rangeIn, uriOf } from "../state/index.js";
 
 /** Registers the edits that follow a move. */
 export function registerFileMoves(context: vscode.ExtensionContext): void {

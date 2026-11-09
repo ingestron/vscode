@@ -4,7 +4,7 @@ import { join } from "node:path";
 import * as vscode from "vscode";
 import { codeDocs, problems, type Problem } from "@ingestron/authoring";
 import { docsLink } from "./docs.js";
-import { environmentOf, forget, projectAt } from "./state.js";
+import { environmentOf, forget, projectAt } from "../state/index.js";
 
 const severities: Record<Problem["severity"], vscode.DiagnosticSeverity> = {
   error: vscode.DiagnosticSeverity.Error,

@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 import { projectSymbols, type Project, type ProjectSymbol } from "@ingestron/authoring";
 import { selector } from "./providers.js";
-import { projectAt, rangeIn, uriOf } from "./state.js";
+import { projectAt, rangeIn, uriOf } from "../state/index.js";
 
 const symbolKinds: Record<string, vscode.SymbolKind> = {
   table: vscode.SymbolKind.Struct,

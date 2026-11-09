@@ -1,20 +1,25 @@
 // The Ingestron extension: registers the features in ./features with VS Code.
 import * as vscode from "vscode";
-import { registerAnnotations } from "./vscode/annotations.js";
-import { registerAutoApply } from "./vscode/auto-apply.js";
-import { registerCommands } from "./vscode/commands.js";
-import { registerContextKeys } from "./vscode/context-keys.js";
-import { registerDraftContract } from "./vscode/draft-contract.js";
-import { registerFileMoves } from "./vscode/file-moves.js";
-import { registerFixes } from "./vscode/fixes.js";
-import { registerProblems } from "./vscode/problems.js";
-import { registerProjectView } from "./vscode/project-view.js";
-import { registerProviders } from "./vscode/providers.js";
-import { registerReference } from "./vscode/reference.js";
-import { rememberEnvironments } from "./vscode/state.js";
-import { registerSymbols } from "./vscode/symbols.js";
-import { registerWalkthrough } from "./vscode/walkthrough.js";
-import { registerWizard } from "./vscode/wizard.js";
+import {
+  registerAutoApply,
+  registerCommands,
+  registerDraftContract,
+  registerFileMoves,
+} from "./vscode/commands/index.js";
+import {
+  registerAnnotations,
+  registerFixes,
+  registerProblems,
+  registerProviders,
+  registerSymbols,
+} from "./vscode/editor/index.js";
+import { registerContextKeys, rememberEnvironments } from "./vscode/state/index.js";
+import {
+  registerProjectView,
+  registerReference,
+  registerWalkthrough,
+} from "./vscode/views/index.js";
+import { registerWizard } from "./vscode/wizard/index.js";
 
 /** Called by VS Code when a workspace has an Ingestron project, or a command runs. */
 export function activate(context: vscode.ExtensionContext): void {

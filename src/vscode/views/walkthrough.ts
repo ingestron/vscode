@@ -4,7 +4,7 @@
 // whose condition was already true then, so the steps are also marked complete
 // directly; none is ever unmarked.
 import * as vscode from "vscode";
-import { onProjectChange } from "./state.js";
+import { onProjectChange } from "../state/index.js";
 
 /** Each document kind, and the step it completes. */
 const kinds = { Connection: "connection", DataContract: "contract", Flow: "flow" } as const;

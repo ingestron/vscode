@@ -5,9 +5,9 @@
 import { join } from "node:path";
 import { run } from "@ingestron/cli";
 import * as vscode from "vscode";
-import { activity, triggers } from "../features/auto-apply.js";
+import { activity, triggers } from "../../features/auto-apply.js";
 import type { Project } from "@ingestron/authoring";
-import { contextAt, environmentOf, onProjectChange, projectAt } from "./state.js";
+import { contextAt, environmentOf, onProjectChange, projectAt } from "../state/index.js";
 
 const key = "ingestron.autoApply";
 

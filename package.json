@@ -299,7 +299,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "package": "node scripts/package.mjs",
-    "validate": "pnpm format:check && pnpm secrets:check && pnpm licences:check && node --test scripts/*.test.mjs && pnpm lint && pnpm typecheck && pnpm build && pnpm test",
+    "validate": "pnpm format:check && pnpm secrets:check && pnpm licences:check && node --test scripts/*.test.mjs && node scripts/check-modules.mjs src/vscode src/features && pnpm lint && pnpm typecheck && pnpm build && pnpm test",
     "test:integration": "node scripts/build.mjs && node test/integration/run.mjs",
     "screenshots": "node scripts/screenshots.mjs",
     "gifs": "node scripts/gifs.mjs",

@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import { fixAll, moveSetting, quickFixes, type QuickFix } from "@ingestron/authoring";
 import { codeOf } from "./docs.js";
 import { selector } from "./providers.js";
-import { environmentOf, projectAt, uriOf, type Here } from "./state.js";
+import { environmentOf, projectAt, uriOf, type Here } from "../state/index.js";
 
 /** Registers the quick fix provider. */
 export function registerFixes(context: vscode.ExtensionContext): void {

@@ -4,7 +4,7 @@
 import { basename, dirname, join } from "node:path";
 import * as vscode from "vscode";
 import { parse } from "yaml";
-import { limits } from "../features/limits.js";
+import { limits } from "../../features/limits.js";
 import {
   followedFolder,
   foldOf,
@@ -14,14 +14,14 @@ import {
   rowId,
   type ProjectInfo,
   type TreeNode,
-} from "../features/project-tree.js";
+} from "../../features/project-tree.js";
 import {
   environmentOf,
   onEnvironmentChange,
   previewOf,
   previewScheme,
   projectAt,
-} from "./state.js";
+} from "../state/index.js";
 
 const exclude = "**/{build,node_modules,.git}/**";
 

@@ -11,7 +11,7 @@ import {
   type Suggestion,
 } from "@ingestron/authoring";
 import { docsLink } from "./docs.js";
-import { environmentOf, projectAt, rangeIn, uriOf } from "./state.js";
+import { environmentOf, projectAt, rangeIn, uriOf } from "../state/index.js";
 
 /** The files the language features and quick fixes serve. */
 export const selector: vscode.DocumentSelector = [

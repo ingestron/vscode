@@ -3,7 +3,7 @@
 import { basename } from "node:path";
 import * as vscode from "vscode";
 import { annotationsIn, generatedLenses } from "@ingestron/authoring";
-import { environmentOf, onProjectChange, projectAt } from "./state.js";
+import { environmentOf, onProjectChange, projectAt } from "../state/index.js";
 
 const yaml: vscode.DocumentSelector = [{ scheme: "file", pattern: "**/*.{yaml,yml}" }];
 

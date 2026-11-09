@@ -5,7 +5,7 @@
 import { basename, join } from "node:path";
 import * as vscode from "vscode";
 import { generatedFiles, type Project } from "@ingestron/authoring";
-import { onProjectChange, previewOf, previewScheme, projectAt } from "./state.js";
+import { onProjectChange, previewOf, previewScheme, projectAt } from "../state/index.js";
 
 /**
  * The preview of one generated file. The path starts with the project
