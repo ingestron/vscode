@@ -29,10 +29,10 @@ const { metafile } = await build({
 });
 writeFileSync(join(root, "THIRD_PARTY_NOTICES"), thirdPartyNotices(metafile, root));
 
-// The data folders come from the packages the CLI itself resolves, the same
-// versions the bundle's code comes from, not whatever the extension lists.
-const cli = realpathSync(join(root, "node_modules/@ingestron/cli"));
-const installed = (name) => (name === "cli" ? cli : join(dirname(cli), name));
+// The data folders come from the packages @ingestron/core itself resolves, the
+// same versions the bundle's code comes from, not whatever the extension lists.
+const core = realpathSync(join(root, "node_modules/@ingestron/core"));
+const installed = (name) => (name === "core" ? core : join(dirname(core), name));
 const notGenerated = (path) => !/\/(build|\.generated\.json)(\/|$)/.test(path);
 for (const [from, to] of [
   ["definitions/schemas", "schemas"],
