@@ -1,11 +1,12 @@
-// Ingestron: New project. Pickers for what picks the project (a starter, or a connection, its
-// reachability and route), then the folder; the CLI's own `init` writes the project, with
-// REPLACE_ME where a value cannot be known, and README.md, which opens to say what to write.
+// Ingestron: New project. Pickers for what picks the project (a starter, a published standard, or
+// a connection, its reachability and route), then the folder; the CLI's own `init` writes the
+// project, with REPLACE_ME where a value cannot be known, and README.md, which opens to say what
+// to write.
 import { join } from "node:path";
 import { run } from "@ingestron/cli";
 import * as vscode from "vscode";
 import { chooseProject } from "./wizard-choices.js";
-import { chooseStart, chooseStarter } from "./wizard-starters.js";
+import { chooseKit, chooseStart, chooseStarter } from "./wizard-starters.js";
 
 /** Registers the New project command. */
 export function registerWizard(
@@ -20,12 +21,7 @@ export function registerWizard(
 /** What to create first, then where: the folder dialog comes last, and its name is the id. */
 async function newProject(output: vscode.OutputChannel): Promise<void> {
   const start = await chooseStart();
-  const flags =
-    start === "starter"
-      ? await starterFlags()
-      : start === "connection"
-        ? await connectionFlags()
-        : undefined;
+  const flags = await flagsFor(start);
   if (!flags) return;
   const folder = (
     await vscode.window.showOpenDialog({
@@ -49,6 +45,14 @@ async function newProject(output: vscode.OutputChannel): Promise<void> {
   const readme = vscode.Uri.file(join(folder.fsPath, "README.md"));
   await vscode.commands.executeCommand("markdown.showPreview", readme);
   await offerFolder(folder, createdMessage(written));
+}
+
+/** init's flags for what the user chose to start from; undefined when they cancel. */
+function flagsFor(start: Awaited<ReturnType<typeof chooseStart>>): Promise<string[] | undefined> {
+  if (start === "starter") return starterFlags();
+  if (start === "kit") return kitFlags();
+  if (start === "connection") return connectionFlags();
+  return Promise.resolve(undefined);
 }
 
 /** What init said is still to write, as the message after creating the project. */
@@ -89,6 +93,12 @@ async function offerFolder(folder: vscode.Uri, message: string): Promise<void> {
 async function starterFlags(): Promise<string[] | undefined> {
   const choice = await chooseStarter();
   return choice && ["--template", choice.template.name];
+}
+
+/** A published standard as init's flag. */
+async function kitFlags(): Promise<string[] | undefined> {
+  const choice = await chooseKit();
+  return choice && ["--kit", choice.spec];
 }
 
 /** A connection, its reachability and its route as init's flags. */
