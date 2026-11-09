@@ -1,40 +1,46 @@
 // The Ingestron extension: registers the features in ./features with VS Code.
 import * as vscode from "vscode";
-import { registerAnnotations } from "./vscode/annotations.js";
-import { registerAutoApply } from "./vscode/auto-apply.js";
-import { registerCommands } from "./vscode/commands.js";
-import { registerContextKeys } from "./vscode/context-keys.js";
-import { registerDraftContract } from "./vscode/draft-contract.js";
-import { registerFileMoves } from "./vscode/file-moves.js";
-import { registerFixes } from "./vscode/fixes.js";
-import { registerProblems } from "./vscode/problems.js";
-import { registerProjectView } from "./vscode/project-view.js";
-import { registerProviders } from "./vscode/providers.js";
-import { registerReference } from "./vscode/reference.js";
-import { rememberEnvironments } from "./vscode/state.js";
-import { registerSymbols } from "./vscode/symbols.js";
-import { registerWalkthrough } from "./vscode/walkthrough.js";
-import { registerWizard } from "./vscode/wizard.js";
+import {
+  registerAutoApply,
+  registerCommands,
+  registerDraftContract,
+  registerFileMoves,
+} from "./vscode/commands/index.js";
+import {
+  registerAnnotations,
+  registerFixes,
+  registerProblems,
+  registerProviders,
+  registerSymbols,
+} from "./vscode/editor/index.js";
+import { ExtensionState, registerContextKeys } from "./vscode/state/index.js";
+import {
+  registerProjectView,
+  registerReference,
+  registerWalkthrough,
+} from "./vscode/views/index.js";
+import { registerWizard } from "./vscode/wizard/index.js";
 
 /** Called by VS Code when a workspace has an Ingestron project, or a command runs. */
 export function activate(context: vscode.ExtensionContext): void {
   const output = vscode.window.createOutputChannel("Ingestron");
   context.subscriptions.push(output);
-  rememberEnvironments(context.workspaceState);
-  const refresh = registerProblems(context);
-  registerProviders(context);
-  registerSymbols(context);
-  registerAnnotations(context);
-  registerFixes(context);
-  registerFileMoves(context);
-  registerReference(context);
-  registerProjectView(context);
-  registerCommands(context, output, refresh);
+  const state = new ExtensionState(context.workspaceState);
+  context.subscriptions.push(state);
+  const refresh = registerProblems(context, state);
+  registerProviders(context, state);
+  registerSymbols(context, state);
+  registerAnnotations(context, state);
+  registerFixes(context, state);
+  registerFileMoves(context, state);
+  registerReference(context, state);
+  registerProjectView(context, state);
+  registerCommands(context, state, output, refresh);
   registerContextKeys(context);
-  registerAutoApply(context, output, refresh);
+  registerAutoApply(context, state, output, refresh);
   registerWizard(context, output);
   registerDraftContract(context);
-  registerWalkthrough(context);
+  registerWalkthrough(context, state);
 }
 
 /** Nothing to clean up beyond the disposables in the context. */

@@ -11,7 +11,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const workspace = mkdtempSync(join(tmpdir(), "ingestron-vscode-it-"));
 // Worktree paths can exceed macOS's Unix socket limit for VS Code's IPC handle.
 const userData = mkdtempSync(join(tmpdir(), "ingestron-vscode-"));
-cpSync(join(here, "../../node_modules/@ingestron/cli/project-templates/retail"), workspace, {
+cpSync(join(here, "../../node_modules/@ingestron/core/project-templates/retail"), workspace, {
   recursive: true,
 });
 createRequire(import.meta.url)("./starters.cjs").fillStarter(workspace, "retail");

@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 // Previews of generated files have no project file behind them, so the buttons
 // recognise them by their scheme, which the extension names once in state.ts.
 const previewScheme = /export const previewScheme = "([^"]+)"/.exec(
-  readFileSync(join(import.meta.dirname, "..", "src", "vscode", "state.ts"), "utf8"),
+  readFileSync(join(import.meta.dirname, "..", "src", "vscode", "state", "state.ts"), "utf8"),
 )?.[1];
 const editorTitleWhen = `resourceScheme == ${previewScheme} || resourcePath in ingestron.projectFiles`;
 

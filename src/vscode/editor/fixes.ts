@@ -1,17 +1,20 @@
 // Quick fixes and moves in the light bulb menu, from @ingestron/authoring. A fix
 // may edit several files; VS Code applies it as one change that one undo reverts.
 import * as vscode from "vscode";
-import { fixAll, moveSetting, quickFixes, type QuickFix } from "@ingestron/authoring";
+import type { QuickFix } from "@ingestron/authoring";
 import { codeOf } from "./docs.js";
 import { selector } from "./providers.js";
-import { environmentOf, projectAt, uriOf, type Here } from "./state.js";
+import { uriOf, type ExtensionState, type Here } from "../state/index.js";
 
 /** Registers the quick fix provider. */
-export function registerFixes(context: vscode.ExtensionContext): void {
+export function registerFixes(context: vscode.ExtensionContext, state: ExtensionState): void {
   context.subscriptions.push(
     vscode.languages.registerCodeActionsProvider(
       selector,
-      { provideCodeActions },
+      {
+        provideCodeActions: (document, range, context) =>
+          provideCodeActions(state, document, range, context),
+      },
       {
         providedCodeActionKinds: [
           vscode.CodeActionKind.QuickFix,
@@ -23,19 +26,20 @@ export function registerFixes(context: vscode.ExtensionContext): void {
 }
 
 function provideCodeActions(
+  state: ExtensionState,
   document: vscode.TextDocument,
   range: vscode.Range,
   context: vscode.CodeActionContext,
 ): vscode.CodeAction[] {
-  const here = projectAt(document.uri);
+  const here = state.projectAt(document.uri);
   if (!here) return [];
   const at = { start: range.start, end: range.end };
-  const environment = environmentOf(here.project);
-  const fixes = quickFixes(here.project, environment, here.file, at);
+  const environment = state.environmentOf(here.project);
+  const fixes = here.project.quickFixes(environment, here.file, at);
   const offset = document.offsetAt(range.start);
-  const moves = moveSetting(here.project, here.file, document.getText(), offset, environment);
+  const moves = here.project.moveSetting(here.file, document.getText(), offset, environment);
   const codes = [...new Set(fixes.flatMap((fix) => (fix.problem ? [fix.problem.code] : [])))];
-  const all = codes.flatMap((code) => fixAll(here.project, environment, code));
+  const all = codes.flatMap((code) => here.project.fixAll(environment, code));
   return [
     ...fixes.map((fix, index) => actionFor(here, fix, context, index === 0)),
     ...all.map((fix) => actionFor(here, fix, context, false, vscode.CodeActionKind.QuickFix)),

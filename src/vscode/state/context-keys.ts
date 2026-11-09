@@ -5,8 +5,8 @@
 // is left to the menus, which ask it of each editor with `resourcePath`.
 import { dirname } from "node:path";
 import * as vscode from "vscode";
-import { limits } from "../features/limits.js";
-import { inBuildFolder, projectFilesOf, serialised } from "../features/context-keys.js";
+import { limits } from "../../features/limits.js";
+import { inBuildFolder, projectFilesOf, serialised } from "../../features/context-keys.js";
 
 /**
  * Keeps `ingestron.projectFolders`, `ingestron.projectFiles` and

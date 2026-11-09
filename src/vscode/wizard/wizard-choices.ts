@@ -1,5 +1,5 @@
 // Categorised source discovery and compatible routes come from the CLI catalogue.
-import { projectRoutes, projectSources } from "@ingestron/cli";
+import { projectRoutes, projectSources } from "@ingestron/core";
 import * as vscode from "vscode";
 /** The source choices for New project: init composes the project from them. */
 export interface ProjectChoice {

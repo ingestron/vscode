@@ -63,7 +63,7 @@ vi.mock("vscode", () => ({
     },
   },
 }));
-import { createdMessage, registerWizard } from "../src/vscode/wizard.js";
+import { createdMessage, registerWizard } from "../src/vscode/wizard/wizard.js";
 beforeEach(() => {
   state.choices = [];
   state.inputs = [];

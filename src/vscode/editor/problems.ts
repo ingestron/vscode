@@ -2,9 +2,9 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import * as vscode from "vscode";
-import { codeDocs, problems, type Problem } from "@ingestron/authoring";
+import { codeDocs, type Problem } from "@ingestron/authoring";
 import { docsLink } from "./docs.js";
-import { environmentOf, forget, projectAt } from "./state.js";
+import type { ExtensionState } from "../state/index.js";
 
 const severities: Record<Problem["severity"], vscode.DiagnosticSeverity> = {
   error: vscode.DiagnosticSeverity.Error,
@@ -13,29 +13,15 @@ const severities: Record<Problem["severity"], vscode.DiagnosticSeverity> = {
 };
 
 /** Registers the problem collection and keeps it up to date. Returns a refresh for a file. */
-export function registerProblems(context: vscode.ExtensionContext): (uri: vscode.Uri) => void {
+export function registerProblems(
+  context: vscode.ExtensionContext,
+  state: ExtensionState,
+): (uri: vscode.Uri) => void {
   const collection = vscode.languages.createDiagnosticCollection("ingestron");
-  const shown = new Map<string, Set<string>>();
-  const timers = new Map<string, NodeJS.Timeout>();
-  const refresh = (uri: vscode.Uri) => {
-    const here = projectAt(uri);
-    if (!here) return clearGone(collection, shown, uri);
-    const folder = here.project.folder;
-    clearTimeout(timers.get(folder));
-    timers.set(
-      folder,
-      setTimeout(() => {
-        try {
-          show(collection, shown, uri);
-        } catch (error) {
-          console.error("ingestron: problems could not be checked", error);
-        }
-      }, 300),
-    );
-  };
+  const refresh = refresher(state, collection);
   // Every change, in an editor or on disk, makes the project's snapshot stale.
   const changed = (uri: vscode.Uri) => {
-    forget(uri.fsPath);
+    state.forget(uri.fsPath);
     refresh(uri);
   };
   const watcher = vscode.workspace.createFileSystemWatcher("**/*");
@@ -54,6 +40,31 @@ export function registerProblems(context: vscode.ExtensionContext): (uri: vscode
   return refresh;
 }
 
+/** Shows a file's project's problems 300 ms after the last call for that project. */
+function refresher(
+  state: ExtensionState,
+  collection: vscode.DiagnosticCollection,
+): (uri: vscode.Uri) => void {
+  const shown = new Map<string, Set<string>>();
+  const timers = new Map<string, NodeJS.Timeout>();
+  return (uri: vscode.Uri) => {
+    const here = state.projectAt(uri);
+    if (!here) return clearGone(collection, shown, uri);
+    const folder = here.project.folder;
+    clearTimeout(timers.get(folder));
+    timers.set(
+      folder,
+      setTimeout(() => {
+        try {
+          show(state, collection, shown, uri);
+        } catch (error) {
+          console.error("ingestron: problems could not be checked", error);
+        }
+      }, 300),
+    );
+  };
+}
+
 /** A project whose project.yaml is gone: clear the problems shown for it. */
 function clearGone(
   collection: vscode.DiagnosticCollection,
@@ -68,15 +79,16 @@ function clearGone(
 }
 
 function show(
+  state: ExtensionState,
   collection: vscode.DiagnosticCollection,
   shown: Map<string, Set<string>>,
   uri: vscode.Uri,
 ): void {
-  const here = projectAt(uri);
+  const here = state.projectAt(uri);
   if (!here) return;
   const { project } = here;
   const byFile = new Map<string, vscode.Diagnostic[]>();
-  for (const problem of problems(project, environmentOf(project))) {
+  for (const problem of project.problems(state.environmentOf(project))) {
     const { start, end } = problem.range;
     const diagnostic = new vscode.Diagnostic(
       new vscode.Range(start.line, start.character, end.line, end.character),

@@ -2,24 +2,23 @@
 // entry for the place under the cursor, kept up to date as the cursor moves,
 // the editor changes or problems change. A link to what the code describes
 // opens in the tab itself, with Back; other pages open in the browser.
-import { referenceAt, referenceForDocs } from "@ingestron/authoring";
 import * as vscode from "vscode";
-import { referenceHtml } from "../features/reference-html.js";
-import { docsLink } from "./docs.js";
-import { environmentOf, projectAt, type Here } from "./state.js";
+import { referenceHtml } from "../../features/reference-html.js";
+import { docsLink } from "../editor/index.js";
+import type { ExtensionState, Here } from "../state/index.js";
 
 const viewId = "ingestron.reference";
 const openCommand = "ingestron.referenceOpen";
 const backCommand = "ingestron.referenceBack";
 
 /** Registers the view and the commands that show it and move through it. */
-export function registerReference(context: vscode.ExtensionContext): void {
+export function registerReference(context: vscode.ExtensionContext, state: ExtensionState): void {
   let view: vscode.WebviewView | undefined;
   let timer: NodeJS.Timeout | undefined;
   /** The docs paths opened in the tab, the latest last; empty while following the cursor. */
   const history: string[] = [];
   const render = () => {
-    if (view?.visible) view.webview.html = page(vscode.window.activeTextEditor, history);
+    if (view?.visible) view.webview.html = page(state, vscode.window.activeTextEditor, history);
   };
   const follow = () => {
     history.length = 0;
@@ -65,14 +64,18 @@ function browsing(history: string[], render: () => void): vscode.Disposable[] {
 }
 
 /** The page for the last docs path opened, else for the cursor in the active editor. */
-function page(editor: vscode.TextEditor | undefined, history: string[]): string {
-  const here = editor && projectAt(editor.document.uri);
+function page(
+  state: ExtensionState,
+  editor: vscode.TextEditor | undefined,
+  history: string[],
+): string {
+  const here = editor && state.projectAt(editor.document.uri);
   if (!editor || !here) return referenceHtml(undefined, docsLink);
-  const link = inPanel(here);
+  const link = inPanel(state, here);
   try {
     const path = history.at(-1);
     if (path) {
-      const entry = referenceForDocs(here.project, path, environmentOf(here.project));
+      const entry = here.project.referenceForDocs(path, state.environmentOf(here.project));
       // Back goes to the previous entry, or from the first one back to the cursor.
       return referenceHtml(entry, link, {
         back: commandUri(backCommand, []),
@@ -80,12 +83,11 @@ function page(editor: vscode.TextEditor | undefined, history: string[]): string 
       });
     }
     const { document, selection } = editor;
-    const entry = referenceAt(
-      here.project,
+    const entry = here.project.referenceAt(
       here.file,
       document.getText(),
       document.offsetAt(selection.active),
-      environmentOf(here.project),
+      state.environmentOf(here.project),
     );
     return referenceHtml(entry, link);
   } catch (error) {
@@ -95,10 +97,10 @@ function page(editor: vscode.TextEditor | undefined, history: string[]): string 
 }
 
 /** A link that opens in the tab when the code describes what it names, else on the site. */
-function inPanel(here: Here): (path: string) => string {
-  const environment = environmentOf(here.project);
+function inPanel(state: ExtensionState, here: Here): (path: string) => string {
+  const environment = state.environmentOf(here.project);
   return (path) =>
-    referenceForDocs(here.project, path, environment)
+    here.project.referenceForDocs(path, environment)
       ? commandUri(openCommand, [path])
       : docsLink(path);
 }

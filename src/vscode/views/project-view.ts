@@ -4,7 +4,7 @@
 import { basename, dirname, join } from "node:path";
 import * as vscode from "vscode";
 import { parse } from "yaml";
-import { limits } from "../features/limits.js";
+import { limits } from "../../features/limits.js";
 import {
   followedFolder,
   foldOf,
@@ -14,20 +14,14 @@ import {
   rowId,
   type ProjectInfo,
   type TreeNode,
-} from "../features/project-tree.js";
-import {
-  environmentOf,
-  onEnvironmentChange,
-  previewOf,
-  previewScheme,
-  projectAt,
-} from "./state.js";
+} from "../../features/project-tree.js";
+import { previewOf, previewScheme, type ExtensionState } from "../state/index.js";
 
 const exclude = "**/{build,node_modules,.git}/**";
 
 /** Registers the Project view and keeps it up to date. */
-export function registerProjectView(context: vscode.ExtensionContext): void {
-  const provider = new ProjectTree();
+export function registerProjectView(context: vscode.ExtensionContext, state: ExtensionState): void {
+  const provider = new ProjectTree(state);
   let timer: NodeJS.Timeout | undefined;
   const changed = () => {
     clearTimeout(timer);
@@ -49,7 +43,7 @@ export function registerProjectView(context: vscode.ExtensionContext): void {
     vscode.window.registerTreeDataProvider("ingestron.project", provider),
     // The view shows only the folders, the environments and the chosen one, so it
     // follows those and not every edit (which includes text in the Output channel).
-    onEnvironmentChange(changed),
+    state.onEnvironmentChange(changed),
     manifests.onDidChange(changed),
     vscode.workspace.onDidChangeTextDocument((event) => {
       if (isProjectManifest(event.document.uri.fsPath)) changed();
@@ -71,6 +65,7 @@ export function registerProjectView(context: vscode.ExtensionContext): void {
 }
 
 class ProjectTree implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
+  private readonly state: ExtensionState;
   private readonly changes = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this.changes.event;
   /** The project folders, read from the workspace when something may have moved them. */
@@ -91,6 +86,11 @@ class ProjectTree implements vscode.TreeDataProvider<TreeNode>, vscode.Disposabl
   /** The project that was active when those rows were made. */
   private drawnActive: string | undefined;
   private generation = 0;
+
+  /** A tree over the projects `state` has open. */
+  constructor(state: ExtensionState) {
+    this.state = state;
+  }
 
   /** Rebuilds the rows; `rescan` reads the project folders again first. */
   refresh(rescan = false): void {
@@ -164,10 +164,10 @@ class ProjectTree implements vscode.TreeDataProvider<TreeNode>, vscode.Disposabl
     this.follow(await this.folders);
     const found: ProjectInfo[] = [];
     for (const folder of await this.folders) {
-      const here = projectAt(vscode.Uri.file(join(folder, "project.yaml")));
+      const here = this.state.projectAt(vscode.Uri.file(join(folder, "project.yaml")));
       if (!here) continue;
       const { project } = here;
-      const chosen = environmentOf(project);
+      const chosen = this.state.environmentOf(project);
       found.push({
         folder,
         id: idOf(project.files.read("project.yaml"), folder),

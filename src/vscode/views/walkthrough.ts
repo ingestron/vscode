@@ -4,13 +4,13 @@
 // whose condition was already true then, so the steps are also marked complete
 // directly; none is ever unmarked.
 import * as vscode from "vscode";
-import { onProjectChange } from "./state.js";
+import type { ExtensionState } from "../state/index.js";
 
 /** Each document kind, and the step it completes. */
 const kinds = { Connection: "connection", DataContract: "contract", Flow: "flow" } as const;
 
 /** Checks the workspace now, once the walkthrough is registered, and after every change. */
-export function registerWalkthrough(context: vscode.ExtensionContext): void {
+export function registerWalkthrough(context: vscode.ExtensionContext, state: ExtensionState): void {
   const prefix = `${context.extension.id}#start#`;
   let timer: NodeJS.Timeout | undefined;
   const later = (delay: number) => {
@@ -19,7 +19,7 @@ export function registerWalkthrough(context: vscode.ExtensionContext): void {
     timer = setTimeout(() => void update(prefix), delay).unref();
   };
   context.subscriptions.push(
-    onProjectChange(() => later(1000)),
+    state.onProjectChange(() => later(1000)),
     { dispose: () => clearTimeout(timer) },
   );
   void update(prefix);
