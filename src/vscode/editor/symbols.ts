@@ -1,9 +1,9 @@
 // "Go to Symbol in Workspace" (Ctrl+T) across every project in the workspace,
 // and each definitions file's outline: tables, documents and values.
 import * as vscode from "vscode";
-import { projectSymbols, type Project, type ProjectSymbol } from "@ingestron/authoring";
+import type { ProjectSnapshot, ProjectSymbol } from "@ingestron/authoring";
 import { selector } from "./providers.js";
-import { projectAt, rangeIn, uriOf } from "../state/index.js";
+import { rangeIn, uriOf, type ExtensionState } from "../state/index.js";
 
 const symbolKinds: Record<string, vscode.SymbolKind> = {
   table: vscode.SymbolKind.Struct,
@@ -15,34 +15,44 @@ const symbolKinds: Record<string, vscode.SymbolKind> = {
 };
 
 /** Registers the workspace and document symbol providers. */
-export function registerSymbols(context: vscode.ExtensionContext): void {
+export function registerSymbols(context: vscode.ExtensionContext, state: ExtensionState): void {
   context.subscriptions.push(
-    vscode.languages.registerWorkspaceSymbolProvider({ provideWorkspaceSymbols: workspaceSymbols }),
+    vscode.languages.registerWorkspaceSymbolProvider({
+      provideWorkspaceSymbols: (query) => workspaceSymbols(state, query),
+    }),
     vscode.languages.registerDocumentSymbolProvider(selector, {
-      provideDocumentSymbols: documentSymbols,
+      provideDocumentSymbols: (document) => documentSymbols(state, document),
     }),
   );
 }
 
-async function workspaceSymbols(query: string): Promise<vscode.SymbolInformation[]> {
+async function workspaceSymbols(
+  state: ExtensionState,
+  query: string,
+): Promise<vscode.SymbolInformation[]> {
   const manifests = await vscode.workspace.findFiles(
     "**/project.yaml",
     "**/{node_modules,build}/**",
   );
   const wanted = query.toLowerCase();
   return manifests.flatMap((uri) => {
-    const here = projectAt(uri);
+    const here = state.projectAt(uri);
     if (!here) return [];
-    return projectSymbols(here.project)
+    return here.project
+      .symbols()
       .filter((symbol) => symbol.name.toLowerCase().includes(wanted))
       .map((symbol) => information(here.project, symbol));
   });
 }
 
-function documentSymbols(document: vscode.TextDocument): vscode.DocumentSymbol[] {
-  const here = projectAt(document.uri);
+function documentSymbols(
+  state: ExtensionState,
+  document: vscode.TextDocument,
+): vscode.DocumentSymbol[] {
+  const here = state.projectAt(document.uri);
   if (!here) return [];
-  return projectSymbols(here.project)
+  return here.project
+    .symbols()
     .filter((symbol) => symbol.file === here.file)
     .map((symbol) => {
       const range = rangeIn(here.project, symbol.file, symbol.range);
@@ -50,7 +60,7 @@ function documentSymbols(document: vscode.TextDocument): vscode.DocumentSymbol[]
     });
 }
 
-function information(project: Project, symbol: ProjectSymbol): vscode.SymbolInformation {
+function information(project: ProjectSnapshot, symbol: ProjectSymbol): vscode.SymbolInformation {
   return new vscode.SymbolInformation(
     symbol.name,
     kindOf(symbol),

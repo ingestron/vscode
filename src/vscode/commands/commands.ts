@@ -5,32 +5,23 @@
 import { join } from "node:path";
 import { run } from "@ingestron/cli";
 import * as vscode from "vscode";
-import {
-  compareEnvironments,
-  inProject,
-  problems,
-  generatedFiles,
-  generatedForTable,
-  platformRequest,
-  tableAtCursor,
-  type Generated,
-} from "@ingestron/authoring";
+import { inProject, generatedForTable, tableAtCursor, type Generated } from "@ingestron/authoring";
 import { stoppedMessage } from "../../features/stopped.js";
 import { previewUri, registerPreviews } from "../editor/index.js";
-import { selectEnvironment } from "../state/index.js";
-import { contextAt, environmentHere, hereFor } from "../state/index.js";
+import { selectEnvironment, type ExtensionState } from "../state/index.js";
 
 /** Registers the commands; `refresh` updates problems after the environment changes. */
 export function registerCommands(
   context: vscode.ExtensionContext,
+  state: ExtensionState,
   output: vscode.OutputChannel,
   refresh: (uri: vscode.Uri) => void,
 ): void {
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
   status.command = "ingestron.selectEnvironment";
   const updateStatus = () => {
-    const here = hereFor(undefined);
-    const environment = here && environmentHere(here);
+    const here = state.hereFor(undefined);
+    const environment = here && state.environmentHere(here);
     if (!environment) return status.hide();
     status.text = `Ingestron: ${environment}`;
     status.tooltip = here.environment
@@ -41,34 +32,51 @@ export function registerCommands(
   context.subscriptions.push(
     status,
     vscode.window.onDidChangeActiveTextEditor(updateStatus),
-    ...cliCommands(output, refresh),
+    ...cliCommands(state, output, refresh),
     vscode.commands.registerCommand(
       "ingestron.selectEnvironment",
       async (folder?: unknown, name?: unknown) => {
-        await selectEnvironment(refresh, folder, name);
+        await selectEnvironment(state, refresh, folder, name);
         updateStatus();
       },
     ),
-    vscode.commands.registerCommand("ingestron.showGenerated", (uri?: vscode.Uri) =>
-      showGenerated(false, uri),
-    ),
-    vscode.commands.registerCommand("ingestron.compareWithBuild", () => showGenerated(true)),
-    vscode.commands.registerCommand("ingestron.openGenerated", openGenerated),
-    vscode.commands.registerCommand("ingestron.platformRequest", showPlatformRequest),
-    vscode.commands.registerCommand("ingestron.compareEnvironments", showComparison),
+    ...showCommands(state),
   );
-  registerPreviews(context);
+  registerPreviews(context, state);
   updateStatus();
+}
+
+/** Show generated files, Compare with build, Prepare platform request and Compare environments. */
+function showCommands(state: ExtensionState): vscode.Disposable[] {
+  return [
+    vscode.commands.registerCommand("ingestron.showGenerated", (uri?: vscode.Uri) =>
+      showGenerated(state, false, uri),
+    ),
+    vscode.commands.registerCommand("ingestron.compareWithBuild", () => showGenerated(state, true)),
+    vscode.commands.registerCommand("ingestron.openGenerated", (source: vscode.Uri, path: string) =>
+      openGenerated(state, source, path),
+    ),
+    vscode.commands.registerCommand("ingestron.platformRequest", (uri?: vscode.Uri) =>
+      showPlatformRequest(state, uri),
+    ),
+    vscode.commands.registerCommand("ingestron.compareEnvironments", (uri?: vscode.Uri) =>
+      showComparison(state, uri),
+    ),
+  ];
 }
 
 /**
  * Plan, Apply and Check, which run the CLI in the project of the file or folder they are given,
  * for every environment together: the CLI takes no environment for them.
  */
-function cliCommands(output: vscode.OutputChannel, refresh: (uri: vscode.Uri) => void) {
+function cliCommands(
+  state: ExtensionState,
+  output: vscode.OutputChannel,
+  refresh: (uri: vscode.Uri) => void,
+) {
   return (["plan", "apply", "check"] as const).map((name) =>
     vscode.commands.registerCommand(`ingestron.${name}`, async (uri?: vscode.Uri) => {
-      const project = await runCli(name, output, uri);
+      const project = await runCli(state, name, output, uri);
       // Apply rewrites build/: show what is true now.
       if (project) refresh(vscode.Uri.file(join(project, "project.yaml")));
     }),
@@ -77,11 +85,12 @@ function cliCommands(output: vscode.OutputChannel, refresh: (uri: vscode.Uri) =>
 
 /** Runs the CLI in the project of `uri`, else of the active editor. Returns the project folder it ran in. */
 async function runCli(
+  state: ExtensionState,
   command: "plan" | "apply" | "check",
   output: vscode.OutputChannel,
   uri: vscode.Uri | undefined,
 ): Promise<string | undefined> {
-  const here = hereFor(uri);
+  const here = state.hereFor(uri);
   if (!here)
     return void vscode.window.showInformationMessage("Open a file of an Ingestron project first.");
   const { folder } = here.project;
@@ -98,18 +107,22 @@ async function runCli(
   return folder;
 }
 
-async function showGenerated(compare: boolean, clicked?: vscode.Uri): Promise<void> {
-  const here = hereFor(clicked);
+async function showGenerated(
+  state: ExtensionState,
+  compare: boolean,
+  clicked?: vscode.Uri,
+): Promise<void> {
+  const here = state.hereFor(clicked);
   if (!here) return;
-  const environment = environmentHere(here);
-  const excluded = problems(here.project, environment).find(
-    (problem) => problem.code === "NOT_IMPORTED" && problem.file === here.file,
-  );
+  const environment = state.environmentHere(here);
+  const excluded = here.project
+    .problems(environment)
+    .find((problem) => problem.code === "NOT_IMPORTED" && problem.file === here.file);
   if (excluded)
     return void vscode.window.showWarningMessage(
       `${here.file} is not part of the project, so nothing is generated from it. Use the quick fix on the file to import it.`,
     );
-  const files = generatedFiles(here.project, environment);
+  const files = here.project.generatedFiles(environment);
   if (!Array.isArray(files))
     return void vscode.window.showWarningMessage(stoppedMessage(files.problems));
   const editor = vscode.window.activeTextEditor;
@@ -132,15 +145,15 @@ async function showGenerated(compare: boolean, clicked?: vscode.Uri): Promise<vo
 }
 
 /** The platform request for the chosen environment, as an unsaved Markdown document to send. */
-async function showPlatformRequest(uri?: vscode.Uri): Promise<void> {
-  const here = hereFor(uri);
+async function showPlatformRequest(state: ExtensionState, uri?: vscode.Uri): Promise<void> {
+  const here = state.hereFor(uri);
   if (!here) return void vscode.window.showWarningMessage("Open a file of an Ingestron project.");
-  await markdown(platformRequest(here.project, environmentHere(here)));
+  await markdown(here.project.request(state.environmentHere(here)));
 }
 
 /** The differences between two environments, chosen when the project has more than two. */
-async function showComparison(uri?: vscode.Uri): Promise<void> {
-  const here = hereFor(uri);
+async function showComparison(state: ExtensionState, uri?: vscode.Uri): Promise<void> {
+  const here = state.hereFor(uri);
   const names = here?.project.environments ?? [];
   if (!here || names.length < 2)
     return void vscode.window.showWarningMessage(
@@ -154,7 +167,7 @@ async function showComparison(uri?: vscode.Uri): Promise<void> {
           placeHolder: "Two environments to compare",
         });
   if (picked?.length !== 2) return;
-  const content = compareEnvironments(here.project, picked[0]!, picked[1]!);
+  const content = here.project.compare(picked[0]!, picked[1]!);
   await markdown(content);
 }
 
@@ -164,10 +177,14 @@ async function markdown(content: string): Promise<void> {
 }
 
 /** Opens one generated file, by its path in the project, for the file's project. */
-async function openGenerated(source: vscode.Uri, path: string): Promise<void> {
-  const here = contextAt(source);
-  const environment = here && environmentHere(here);
-  const files = here && generatedFiles(here.project, environment);
+async function openGenerated(
+  state: ExtensionState,
+  source: vscode.Uri,
+  path: string,
+): Promise<void> {
+  const here = state.contextAt(source);
+  const environment = here && state.environmentHere(here);
+  const files = here && here.project.generatedFiles(environment);
   const found = Array.isArray(files) ? files.find((file) => file.path === path) : undefined;
   if (!here || !found)
     return void vscode.window.showWarningMessage(`${path} is not generated now.`);

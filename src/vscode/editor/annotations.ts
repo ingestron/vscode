@@ -2,33 +2,35 @@
 // files that come from it, for the chosen environment.
 import { basename } from "node:path";
 import * as vscode from "vscode";
-import { annotationsIn, generatedLenses } from "@ingestron/authoring";
-import { environmentOf, onProjectChange, projectAt } from "../state/index.js";
+import type { ExtensionState } from "../state/index.js";
 
 const yaml: vscode.DocumentSelector = [{ scheme: "file", pattern: "**/*.{yaml,yml}" }];
 
 /** Registers the inlay hints and code lenses. */
-export function registerAnnotations(context: vscode.ExtensionContext): void {
+export function registerAnnotations(context: vscode.ExtensionContext, state: ExtensionState): void {
   context.subscriptions.push(
     vscode.languages.registerInlayHintsProvider(yaml, {
-      onDidChangeInlayHints: onProjectChange,
-      provideInlayHints: hints,
+      onDidChangeInlayHints: state.onProjectChange,
+      provideInlayHints: (document, range) => hints(state, document, range),
     }),
     vscode.languages.registerCodeLensProvider(yaml, {
-      onDidChangeCodeLenses: onProjectChange,
-      provideCodeLenses: lenses,
+      onDidChangeCodeLenses: state.onProjectChange,
+      provideCodeLenses: (document) => lenses(state, document),
     }),
   );
 }
 
-function hints(document: vscode.TextDocument, range: vscode.Range): vscode.InlayHint[] {
-  const here = projectAt(document.uri);
+function hints(
+  state: ExtensionState,
+  document: vscode.TextDocument,
+  range: vscode.Range,
+): vscode.InlayHint[] {
+  const here = state.projectAt(document.uri);
   if (!here) return [];
-  const found = annotationsIn(
-    here.project,
+  const found = here.project.annotationsIn(
     here.file,
     document.getText(),
-    environmentOf(here.project),
+    state.environmentOf(here.project),
   );
   return found
     .filter((item) => item.line >= range.start.line && item.line <= range.end.line)
@@ -44,14 +46,13 @@ function hints(document: vscode.TextDocument, range: vscode.Range): vscode.Inlay
     });
 }
 
-function lenses(document: vscode.TextDocument): vscode.CodeLens[] {
-  const here = projectAt(document.uri);
+function lenses(state: ExtensionState, document: vscode.TextDocument): vscode.CodeLens[] {
+  const here = state.projectAt(document.uri);
   if (!here) return [];
-  const found = generatedLenses(
-    here.project,
+  const found = here.project.generatedLenses(
     here.file,
     document.getText(),
-    environmentOf(here.project),
+    state.environmentOf(here.project),
   );
   return found.flatMap(({ line, methods, chosen, files }) => {
     const at = new vscode.Range(line, 0, line, 0);

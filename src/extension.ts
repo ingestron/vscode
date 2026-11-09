@@ -13,7 +13,7 @@ import {
   registerProviders,
   registerSymbols,
 } from "./vscode/editor/index.js";
-import { registerContextKeys, rememberEnvironments } from "./vscode/state/index.js";
+import { ExtensionState, registerContextKeys } from "./vscode/state/index.js";
 import {
   registerProjectView,
   registerReference,
@@ -25,21 +25,22 @@ import { registerWizard } from "./vscode/wizard/index.js";
 export function activate(context: vscode.ExtensionContext): void {
   const output = vscode.window.createOutputChannel("Ingestron");
   context.subscriptions.push(output);
-  rememberEnvironments(context.workspaceState);
-  const refresh = registerProblems(context);
-  registerProviders(context);
-  registerSymbols(context);
-  registerAnnotations(context);
-  registerFixes(context);
-  registerFileMoves(context);
-  registerReference(context);
-  registerProjectView(context);
-  registerCommands(context, output, refresh);
+  const state = new ExtensionState(context.workspaceState);
+  context.subscriptions.push(state);
+  const refresh = registerProblems(context, state);
+  registerProviders(context, state);
+  registerSymbols(context, state);
+  registerAnnotations(context, state);
+  registerFixes(context, state);
+  registerFileMoves(context, state);
+  registerReference(context, state);
+  registerProjectView(context, state);
+  registerCommands(context, state, output, refresh);
   registerContextKeys(context);
-  registerAutoApply(context, output, refresh);
+  registerAutoApply(context, state, output, refresh);
   registerWizard(context, output);
   registerDraftContract(context);
-  registerWalkthrough(context);
+  registerWalkthrough(context, state);
 }
 
 /** Nothing to clean up beyond the disposables in the context. */

@@ -6,29 +6,30 @@ import { join } from "node:path";
 import { run } from "@ingestron/cli";
 import * as vscode from "vscode";
 import { activity, triggers } from "../../features/auto-apply.js";
-import type { Project } from "@ingestron/authoring";
-import { contextAt, environmentOf, onProjectChange, projectAt } from "../state/index.js";
+import type { ProjectSnapshot } from "@ingestron/authoring";
+import type { ExtensionState } from "../state/index.js";
 
 const key = "ingestron.autoApply";
 
 /** Registers the switch; `refresh` updates problems after a run. */
 export function registerAutoApply(
   context: vscode.ExtensionContext,
+  state: ExtensionState,
   output: vscode.OutputChannel,
   refresh: (uri: vscode.Uri) => void,
 ): void {
   let on = context.workspaceState.get<boolean>(key) ?? false;
-  const { item, show } = statusItem(() => on);
-  const apply = debounced(output, refresh);
+  const { item, show } = statusItem(state, () => on);
+  const apply = debounced(state, output, refresh);
   context.subscriptions.push(
     item,
     vscode.window.onDidChangeActiveTextEditor(show),
-    onProjectChange(show),
+    state.onProjectChange(show),
     vscode.commands.registerCommand("ingestron.toggleAutoApply", async () => {
       on = !on;
       await context.workspaceState.update(key, on);
       show();
-      const here = current();
+      const here = current(state);
       // Without a project file in front, nothing applies until a save.
       const when = here ? "now, then after each save" : "after each save";
       output.appendLine(
@@ -38,7 +39,7 @@ export function registerAutoApply(
       if (on && here) apply(here.project);
     }),
     vscode.workspace.onDidSaveTextDocument((document) => {
-      const here = on ? projectAt(document.uri) : undefined;
+      const here = on ? state.projectAt(document.uri) : undefined;
       if (here && triggers(here.file)) apply(here.project);
     }),
   );
@@ -46,11 +47,11 @@ export function registerAutoApply(
 }
 
 /** The status bar switch, shown only in a project. */
-function statusItem(isOn: () => boolean) {
+function statusItem(state: ExtensionState, isOn: () => boolean) {
   const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
   item.command = "ingestron.toggleAutoApply";
   const show = () => {
-    const here = current();
+    const here = current(state);
     if (!here) return item.hide();
     item.text = isOn() ? "$(sync) Auto-apply: on" : "Auto-apply: off";
     item.tooltip = isOn()
@@ -62,34 +63,42 @@ function statusItem(isOn: () => boolean) {
 }
 
 /** Applies a project 400 ms after its last save, then refreshes its problems. */
-function debounced(output: vscode.OutputChannel, refresh: (uri: vscode.Uri) => void) {
+function debounced(
+  state: ExtensionState,
+  output: vscode.OutputChannel,
+  refresh: (uri: vscode.Uri) => void,
+) {
   const timers = new Map<string, NodeJS.Timeout>();
-  return (project: Project) => {
+  return (project: ProjectSnapshot) => {
     clearTimeout(timers.get(project.folder));
     timers.set(
       project.folder,
       setTimeout(() => {
-        applyNow(project, output);
+        applyNow(state, project, output);
         refresh(vscode.Uri.file(join(project.folder, "project.yaml")));
       }, 400),
     );
   };
 }
 
-function current() {
+function current(state: ExtensionState) {
   const uri = vscode.window.activeTextEditor?.document.uri;
-  return uri && contextAt(uri);
+  return uri && state.contextAt(uri);
 }
 
 /** The CLI's own apply, for every environment, with its output turned into activity lines. */
-function applyNow(project: Project, output: vscode.OutputChannel): void {
+function applyNow(
+  state: ExtensionState,
+  project: ProjectSnapshot,
+  output: vscode.OutputChannel,
+): void {
   const { folder } = project;
   let text = "";
   const args = ["apply", "--no-diff", "--definitions", folder, "--out", join(folder, "build")];
   run(args, { cwd: folder, write: (chunk) => (text += chunk) });
   const shown = {
     environments: project.environments,
-    selected: environmentOf(project) ?? "default",
+    selected: state.environmentOf(project) ?? "default",
   };
   output.append(activity(text, new Date(), shown));
 }
