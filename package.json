@@ -312,7 +312,7 @@
   "dependencies": {
     "@ingestron/authoring": "^2.3.0",
     "@ingestron/cli": "^2.3.0",
-    "@ingestron/config": "^1.6.0",
+    "@ingestron/config": "^1.7.0",
     "@ingestron/core": "^1.1.0",
     "@ingestron/definitions": "^1.13.0",
     "@ingestron/generate": "^1.1.0",
