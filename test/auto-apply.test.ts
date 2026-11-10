@@ -55,6 +55,21 @@ describe("auto-apply", () => {
     expect(log(output)).toBe("09:05:07  duckdb (dev): up to date\n");
   });
 
+  it("leaves the count of accepted warnings out of the activity", () => {
+    const output = [
+      "duckdb: warnings",
+      "(project)  warning  PACK_NOTICE",
+      "  A notice.",
+      "",
+      "1 accepted warning (platform.yaml)",
+      "duckdb → build/duckdb (dev)",
+      "",
+      "3 files: 3 unchanged. Up to date.",
+      "",
+    ];
+    expect(log(output)).toBe("09:05:07  duckdb (dev): up to date\n");
+  });
+
   it("sends the reader to the Problems panel when the selected environment or a pack has problems", () => {
     const problems = [
       "dev, prod: the definitions have problems",
