@@ -3,31 +3,15 @@
 // schemas, the Databricks pack's SQL templates, the ADF pack's connector
 // recipes, the starters (core's project templates) and the published standards (the
 // standards package's kits). In the bundle, import.meta.url is the bundle's own file, so
-// "../schemas" and the others resolve to these copies; the bundle cannot resolve
-// @ingestron/standards, so core finds the kits at "../kits".
-import { cpSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+// "../schemas" and the others resolve to these copies. The bundle cannot resolve
+// @ingestron/standards; core looks for the kits at "../kits" first.
+import { cpSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 import { thirdPartyNotices } from "./third-party-notices.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-
-// The CLI reads its own version from "../package.json", which beside the bundle is the
-// extension's. init --kit checks a kit's `requires` against that version, so the bundle
-// carries the CLI's version instead.
-const cli = realpathSync(join(root, "node_modules/@ingestron/cli"));
-const { version: cliVersion } = JSON.parse(readFileSync(join(cli, "package.json"), "utf8"));
-const ownVersion = {
-  name: "cli-version",
-  setup(build) {
-    build.onLoad({ filter: /[\\/]version\.js$/ }, ({ path }) =>
-      path === join(cli, "dist/version.js")
-        ? { contents: `export function cliVersion() { return "${cliVersion}"; }`, loader: "js" }
-        : undefined,
-    );
-  },
-};
 
 rmSync(join(root, "dist"), { recursive: true, force: true });
 const { metafile } = await build({
@@ -42,7 +26,6 @@ const { metafile } = await build({
   define: { "import.meta.url": "__importMetaUrl" },
   banner: { js: 'var __importMetaUrl = require("node:url").pathToFileURL(__filename).href;' },
   metafile: true,
-  plugins: [ownVersion],
   absWorkingDir: root,
   logLevel: "warning",
 });

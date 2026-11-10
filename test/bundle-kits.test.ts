@@ -4,7 +4,7 @@
 // kits come from the kits folder the build copies beside the bundle. Like bundle.test.ts, it
 // reads the output of `pnpm build`, which validate runs first.
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -67,6 +67,13 @@ describe("bundle and published standards", () => {
     const installed = mkdtempSync(join(tmpdir(), "ingestron-vscode-installed-"));
     for (const file of installedFiles)
       cpSync(join(root, file), join(installed, file), { recursive: true });
+    // The bundle's "../package.json" is the extension's. Give it a version no kit accepts: the
+    // bundled CLI must use its own version, not read this file.
+    const extension = JSON.parse(readFileSync(join(installed, "package.json"), "utf8"));
+    writeFileSync(
+      join(installed, "package.json"),
+      JSON.stringify({ ...extension, version: "0.0.1" }),
+    );
     const modules = mkdtempSync(join(tmpdir(), "ingestron-vscode-stub-"));
     mkdirSync(join(modules, "vscode"));
     writeFileSync(join(modules, "vscode", "index.js"), stub);
@@ -102,5 +109,14 @@ describe("bundle and published standards", () => {
     ]);
     for (const file of ["project.yaml", "standard.yaml", "STANDARD.md", "README.md", ".gitignore"])
       expect(existsSync(join(target, file)), `${file}\n${written}`).toBe(true);
+  });
+
+  it("carries the CLI's own version, from the CLI's package.json", () => {
+    const cli = JSON.parse(
+      readFileSync(join(root, "node_modules/@ingestron/cli/package.json"), "utf8"),
+    ) as { version: string };
+    const bundle = readFileSync(join(root, "dist/extension.cjs"), "utf8");
+    const versions = [...bundle.matchAll(/manifestVersion = "([^"]+)"/g)].map((match) => match[1]);
+    expect(versions).toEqual([cli.version]);
   });
 });
