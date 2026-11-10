@@ -16,6 +16,10 @@ describe("extension package", () => {
     expect(files).toContain("LICENSE");
     expect(files).toContain("NOTICE");
     expect(files).toContain("THIRD_PARTY_NOTICES");
+    // The published standards, which the bundle lists offline from beside dist/.
+    for (const kit of ["duckdb/local-medallion", "databricks/lakehouse-streaming"])
+      expect(files).toContain(`kits/${kit}/2026-11-10/kit.yaml`);
+    expect(files).toContain("kits/duckdb/local-medallion/2026-11-10/gitignore");
     // Screenshots and other scratch output stay out of the package.
     expect(files.filter((file) => file.startsWith(".tmp/"))).toEqual([]);
     // pnpm's workspace settings can name local paths, such as tarballs to test with.

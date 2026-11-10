@@ -12,3 +12,4 @@ project-templates/
 *.vsix
 THIRD_PARTY_NOTICES
 recipes/
+kits/

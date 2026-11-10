@@ -5,4 +5,5 @@ schemas/
 templates/
 project-templates/
 recipes/
+kits/
 .vscode-test/
