@@ -1,6 +1,6 @@
-// New project from a starter: one of the CLI's built-in templates, such as
-// DuckDB on a laptop.
-import { builtInTemplates, type Template } from "@ingestron/core";
+// New project from a starter (one of the CLI's built-in templates, such as DuckDB on a laptop)
+// or from a published standard (a kit).
+import { builtInTemplates, installedKits, type Template } from "@ingestron/core";
 import * as vscode from "vscode";
 
 /** The starter chosen. */
@@ -8,8 +8,13 @@ export interface StarterChoice {
   template: Template;
 }
 
-/** Connection first, as before, or a ready-made starter. */
-export async function chooseStart(): Promise<"connection" | "starter" | undefined> {
+/** The published standard chosen, as init's `--kit` names it: `<id>@<version>`. */
+export interface KitChoice {
+  spec: string;
+}
+
+/** Connection first, as before, a ready-made starter, or a published standard. */
+export async function chooseStart(): Promise<"connection" | "starter" | "kit" | undefined> {
   const picked = await vscode.window.showQuickPick(
     [
       {
@@ -21,6 +26,11 @@ export async function chooseStart(): Promise<"connection" | "starter" | undefine
         label: "From a starter",
         detail: "A ready-made project to try, such as DuckDB on a laptop",
         id: "starter" as const,
+      },
+      {
+        label: "From a published standard",
+        detail: "A dated standard for your platform, with an example project",
+        id: "kit" as const,
       },
     ],
     { title: "New project", placeHolder: "How do you want to start?" },
@@ -46,4 +56,23 @@ export async function chooseStarter(): Promise<StarterChoice | undefined> {
     },
   );
   return picked && { template: picked.template };
+}
+
+/** One of the installed published standards, or undefined when the user cancels. */
+export async function chooseKit(): Promise<KitChoice | undefined> {
+  const picked = await vscode.window.showQuickPick(
+    installedKits().map((kit) => ({
+      label: kit.title,
+      description: `${kit.id}@${kit.version}`,
+      detail: kit.summary,
+      spec: `${kit.id}@${kit.version}`,
+    })),
+    {
+      title: "New project: published standard",
+      placeHolder: "Search published standards",
+      matchOnDescription: true,
+      matchOnDetail: true,
+    },
+  );
+  return picked && { spec: picked.spec };
 }

@@ -773,12 +773,13 @@ async function annotations(flow, document) {
 /** On a setting the standard should hold, the light bulb offers to move it there. */
 async function moveToStandard(flow, document) {
   const editor = await vscode.window.showTextDocument(document);
-  const old = "      with: { mode: upsert,";
+  const old = "      with: { except_columns: [op] }";
   const at = document.getText().indexOf(old);
+  assert.ok(at >= 0, `the retail starter's flow no longer has "${old.trim()}"`);
   await editor.edit((edit) =>
     edit.replace(
       new vscode.Range(document.positionAt(at), document.positionAt(at + old.length)),
-      "      with: { properties: { a: b }, mode: upsert,",
+      "      with: { properties: { a: b }, except_columns: [op] }",
     ),
   );
   const position = document.positionAt(document.getText().indexOf("properties: { a"));

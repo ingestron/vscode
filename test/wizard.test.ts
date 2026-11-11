@@ -137,7 +137,11 @@ it.each([0, 1, 2, 3, 4])(
 it("creates a project from a starter, with the starter's environments, and asks nothing else", async () => {
   state.choices = ["From a starter", "duckdb"];
   await state.command!();
-  expect(state.menus[0]).toEqual(["From a connection", "From a starter"]);
+  expect(state.menus[0]).toEqual([
+    "From a connection",
+    "From a starter",
+    "From a published standard",
+  ]);
   expect(state.menus[1]).toContain("DuckDB on a laptop");
   expect(state.suggested).toEqual([]);
   expect(existsSync(join(state.folder, "samples/orders.csv"))).toBe(true);

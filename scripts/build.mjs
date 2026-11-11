@@ -1,8 +1,10 @@
 // Bundles the extension and the Ingestron packages into dist/extension.js,
 // and copies the data folders the packages ship beside it: the definitions'
 // schemas, the Databricks pack's SQL templates, the ADF pack's connector
-// recipes and the starters (core's project templates). In the bundle, import.meta.url is
-// the bundle's own file, so "../schemas" and the others resolve to these copies.
+// recipes, the starters (core's project templates) and the published standards (the
+// standards package's kits). In the bundle, import.meta.url is the bundle's own file, so
+// "../schemas" and the others resolve to these copies. The bundle cannot resolve
+// @ingestron/standards; core looks for the kits at "../kits" first.
 import { cpSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -39,6 +41,7 @@ for (const [from, to] of [
   ["pack-databricks/templates", "templates"],
   ["pack-adf/recipes", "recipes"],
   ["core/project-templates", "project-templates"],
+  ["standards/kits", "kits"],
 ]) {
   rmSync(join(root, to), { recursive: true, force: true });
   cpSync(installed(from), join(root, to), { recursive: true, filter: notGenerated });

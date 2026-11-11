@@ -38,8 +38,9 @@ project, one set for every environment.
   previews and what each line becomes.
 - **Auto-apply** writes the files each time you save, if you turn it on.
 
-New project starts a project from a starter, and the Project and Reference
-views sit beside the editor.
+New project starts a project in one of three ways: from a connection, a
+starter or a published standard. The Project and Reference views sit beside
+the editor.
 
 Documentation: [docs.ingestron.io](https://docs.ingestron.io/docs/tools/vscode).
 

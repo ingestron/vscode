@@ -108,6 +108,32 @@ const settings = {
   "window.title": "${activeEditorShort} — ${rootName}",
 };
 
+/** Synthetic values for each starter's REPLACE_ME, so the shots show a project that is filled in. */
+const starterValues = {
+  retail: [
+    "run_as=7f3c2a10-0000-4000-8000-000000000001",
+    "engineers=sales-engineers",
+    "analysts=sales-analysts",
+    "on_failure=sales-data@example.com",
+    "dev.host=https://adb-1111111111111111.1.azuredatabricks.net",
+    "dev.storage_account=retaildev",
+    "prod.host=https://adb-2222222222222222.2.azuredatabricks.net",
+    "prod.storage_account=retailprod",
+  ],
+  "private-sql-server": [
+    "source_server=erp-sql.corp.example.com",
+    "source_user=ingestron_reader",
+    "customers_object=erp.dbo.Customers",
+    "invoices_object=erp.dbo.Invoices",
+    "integration_runtime=shir-erp",
+    "dev.storage_account=erpdev",
+    "prod.storage_account=erpprod",
+    "dev.key_vault=kv-erp-dev",
+    "prod.key_vault=kv-erp-prod",
+  ],
+  minimal: ["landing=/Volumes/main/landing/shop"],
+};
+
 /**
  * Creates projects from starters with `ingestron init`, as a reader would,
  * opens them in VS Code and returns helpers to drive it. `projects` is a list
@@ -122,7 +148,8 @@ async function session(
   const parent = join(mkdtempSync(join(tmpdir(), "ingestron-shots-")), "projects");
   mkdirSync(parent);
   for (const [starter, folder] of projects) {
-    execFileSync("node", [cli, "init", folder, "--template", starter, "--yes"], {
+    const values = (starterValues[starter] ?? []).flatMap((value) => ["--set", value]);
+    execFileSync("node", [cli, "init", folder, "--template", starter, "--yes", ...values], {
       cwd: parent,
       stdio: "ignore",
     });
@@ -526,8 +553,8 @@ const shopFlow = [
   "  orders:",
   "    object: orders",
   "    contract: shop.orders",
-  "    store:",
-  "      with: { mode: upsert, sequence_by: updated_at }",
+  "    history: latest",
+  "    sequence: updated_at",
   "",
 ].join("\n");
 
@@ -559,9 +586,9 @@ const groups = [
       writeFileSync(join(workspace, flow), shopFlow);
       await pause(1000);
       await open(flow);
-      // A setting of the last table: the hover opens below it, over empty
+      // The last table's intent: the hover opens below it, over empty
       // editor, so it hides no line and both table labels stay in view.
-      await goto(lineOf(flow, "      with: { mode"), 30);
+      await goto(lineOf(flow, "    sequence: updated_at"), 8);
       await palette("Show or Focus Hover");
       await frame("editor", { focus: ".monaco-hover" });
       await keys("Escape");
@@ -667,13 +694,13 @@ const groups = [
       const { window, palette, open, lineOf, goto, show, drag, fold, frame, pause } = s;
       await show("sidebar", false);
       await open("standard.yaml");
-      await goto(lineOf("standard.yaml", "mode: incremental"), 15);
+      await goto(lineOf("standard.yaml", "default: incremental"), 14);
       await palette("Ingestron: Show reference");
       await pause(1500);
       await drag("auxiliarybar", "left", 430);
       await fold("auxiliarybar", "Project", false);
       await palette("View: Focus Active Editor Group");
-      await goto(lineOf("standard.yaml", "mode: incremental"), 15);
+      await goto(lineOf("standard.yaml", "default: incremental"), 14);
       await pause(1500);
       await frame("reference", { below: await webviewBottom(window, "auxiliarybar") });
       await s.close();
