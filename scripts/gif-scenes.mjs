@@ -18,8 +18,8 @@ const shopFlow = [
   "  orders:",
   "    object: orders",
   "    contract: shop.orders",
-  "    store:",
-  "      with: { mode: upsert, sequence_by: updated_at }",
+  "    history: latest",
+  "    sequence: updated_at",
   "",
 ].join("\n");
 
