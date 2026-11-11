@@ -44,10 +44,13 @@ schema:
 `,
 };
 
+/** A role on the orders contract: DuckDB has no access control, so it cannot apply the role. */
+const withRole = `${files["contracts/orders.yaml"]}roles:\n  - { role: marketing-analysts, access: read }\n`;
+
 /** A project in a new folder, with `accept` entries added to its Platform. */
-function projectWith(accept = ""): ProjectSnapshot {
+function projectWith(accept = "", changed: Record<string, string> = {}): ProjectSnapshot {
   const folder = mkdtempSync(join(tmpdir(), "ingestron-accepted-"));
-  const all = { ...files, "platform.yaml": `${files["platform.yaml"]}${accept}` };
+  const all = { ...files, ...changed, "platform.yaml": `${files["platform.yaml"]}${accept}` };
   for (const [path, text] of Object.entries(all)) {
     mkdirSync(dirname(join(folder, path)), { recursive: true });
     writeFileSync(join(folder, path), text);
@@ -76,6 +79,25 @@ describe("the problems the Problems view shows", () => {
     expect(stale.problems("dev").map((item) => [item.file, item.code])).toEqual([
       ["contracts/orders.yaml", "NOT_APPLIED"],
       ["platform.yaml", "ACCEPT_UNUSED"],
+    ]);
+  });
+
+  it("mark a role that no engine applies, at the role's line", () => {
+    const found = projectWith("", { "contracts/orders.yaml": withRole })
+      .problems("dev")
+      .filter((item) => item.message.includes("marketing-analysts"));
+    expect(found).toMatchObject([
+      { file: "contracts/orders.yaml", code: "NOT_APPLIED", range: { start: { line: 11 } } },
+    ]);
+  });
+
+  it("leave out a role the Platform accepts by its feature", () => {
+    const accepted = projectWith(
+      "accept:\n  - code: NOT_APPLIED\n    about: { feature: grants }\n    reason: The folder's permissions do it.\n",
+      { "contracts/orders.yaml": withRole },
+    );
+    expect(accepted.problems("dev").map((item) => item.message)).toEqual([
+      expect.stringContaining("notNull"),
     ]);
   });
 });
