@@ -2,7 +2,7 @@
   "name": "ingestron-vscode",
   "displayName": "Ingestron",
   "description": "Problems, navigation, completion, setting explanations and generated-file previews for Ingestron projects.",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "publisher": "ingestron",
   "private": true,
   "license": "Apache-2.0",
@@ -310,10 +310,10 @@
     "dco:check": "node scripts/check-dco.mjs"
   },
   "dependencies": {
-    "@ingestron/authoring": "^2.3.0",
-    "@ingestron/cli": "^2.3.0",
+    "@ingestron/authoring": "^2.3.1",
+    "@ingestron/cli": "^2.3.1",
     "@ingestron/config": "^1.7.0",
-    "@ingestron/core": "^1.1.0",
+    "@ingestron/core": "^1.1.1",
     "@ingestron/definitions": "^1.13.0",
     "@ingestron/generate": "^1.1.0",
     "@ingestron/pack-adf": "^2.3.0",

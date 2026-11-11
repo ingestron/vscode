@@ -399,10 +399,8 @@ async function session(
           .map(rect)
           .filter((box) => box.bottom <= partsBottom + 1);
         const problems = [];
-        for (const { box, guard, text, textRight } of lines) {
+        for (const { guard, text, textRight } of lines) {
           if (text === "") continue;
-          if (box.top < guard.top - 1 || box.bottom > guard.bottom + 1)
-            problems.push(`the line "${text.slice(0, 40)}" is cut by its editor's edge`);
           if (textRight > guard.right + 1)
             problems.push(`the line "${text.slice(0, 40)}" runs past its editor's right edge`);
         }
@@ -446,6 +444,12 @@ async function session(
           if (!cut) break;
           if (until) problems.push(`the crop at "${until}" cuts something below`);
           bottom = Math.min(partsBottom, cut.bottom);
+        }
+        // A line in the crop must show whole; one below it, past an `until`, is not in the shot.
+        for (const { box, guard, text } of lines) {
+          if (text === "" || box.top >= bottom - 1) continue;
+          if (box.top < guard.top - 1 || box.bottom > guard.bottom + 1)
+            problems.push(`the line "${text.slice(0, 40)}" is cut by its editor's edge`);
         }
         if (widgets.some((box) => box.left < left - 0.5 || box.right > right + 0.5))
           problems.push("a widget is cut by the left or right edge");
@@ -562,18 +566,10 @@ const shopFlow = [
 const groups = [
   {
     // The retail starter in the editor alone.
-    shots: [
-      "environment",
-      "editor",
-      "hover",
-      "problems",
-      "completion",
-      "title-buttons",
-      "new-file",
-    ],
+    shots: ["environment", "editor", "problems", "completion", "title-buttons", "new-file"],
     async run(theme) {
       const s = await session(theme, [["retail", "retail"]]);
-      const { keys, type, palette, open, lineOf, goto, show, drag, growHover, frame, pause } = s;
+      const { keys, type, palette, open, lineOf, goto, show, drag, frame, pause } = s;
       const { workspace } = s;
       await show("sidebar", false);
       // A popup over the file it belongs to: the environment picker over project.yaml.
@@ -592,23 +588,6 @@ const groups = [
       await palette("Show or Focus Hover");
       await frame("editor", { focus: ".monaco-hover" });
       await keys("Escape");
-      // A table's hover: its full name, its methods and each setting's layer.
-      // Folded, the table is the last line, so its long hover covers no line;
-      // without the final newline, no line number shows beside it either.
-      writeFileSync(join(workspace, flow), shopFlow.trimEnd());
-      await pause(1000);
-      await goto(lineOf(flow, "  orders:"), 4);
-      await keys("Alt+Meta+BracketLeft");
-      await pause(500);
-      await palette("Show or Focus Hover");
-      if (wanted("hover")) {
-        await growHover(200);
-        await frame("hover", { focus: ".monaco-hover", keepMouse: true });
-      }
-      await keys("Escape");
-      await palette("Unfold All");
-      writeFileSync(join(workspace, flow), shopFlow);
-      await pause(1000);
 
       // The editor-title buttons, with the … menu open.
       if (wanted("title-buttons")) {
@@ -664,6 +643,28 @@ const groups = [
     },
   },
   {
+    // A table's hover: its full name, its methods, each setting's layer and its intent. It is
+    // long, so it has a taller window of its own. Folded, the table is the last line, so the
+    // hover covers no line; without the final newline, no line number shows beside it either.
+    shots: ["hover"],
+    async run(theme) {
+      const s = await session(theme, [["retail", "retail"]], { size: [width + 2 * inset, 1040] });
+      const { keys, palette, open, lineOf, goto, show, growHover, frame, pause, workspace } = s;
+      await show("sidebar", false);
+      const flow = "flows/shop.yaml";
+      writeFileSync(join(workspace, flow), shopFlow.trimEnd());
+      await pause(1000);
+      await open(flow);
+      await goto(lineOf(flow, "  orders:"), 4);
+      await keys("Alt+Meta+BracketLeft");
+      await pause(500);
+      await palette("Show or Focus Hover");
+      await growHover(300);
+      await frame("hover", { focus: ".monaco-hover", keepMouse: true });
+      await s.close();
+    },
+  },
+  {
     // The generated file for the orders table, read-only beside its flow.
     shots: ["preview"],
     async run(theme) {
@@ -688,8 +689,9 @@ const groups = [
     shots: ["reference"],
     async run(theme) {
       const s = await session(theme, [["private-sql-server", "erp"]], {
-        size: [width + 2 * inset, 640],
-        extraSettings: { "editor.wordWrap": "on" },
+        size: [width + 2 * inset, 1000],
+        // The whole standard fits, so moving the cursor scrolls nothing.
+        extraSettings: { "editor.wordWrap": "on", "editor.scrollBeyondLastLine": false },
       });
       const { window, palette, open, lineOf, goto, show, drag, fold, frame, pause } = s;
       await show("sidebar", false);

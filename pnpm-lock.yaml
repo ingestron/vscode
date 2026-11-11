@@ -9,17 +9,17 @@ importers:
   .:
     dependencies:
       '@ingestron/authoring':
-        specifier: ^2.3.0
-        version: 2.3.0
+        specifier: ^2.3.1
+        version: 2.3.1
       '@ingestron/cli':
-        specifier: ^2.3.0
-        version: 2.3.0
+        specifier: ^2.3.1
+        version: 2.3.1
       '@ingestron/config':
         specifier: ^1.7.0
         version: 1.7.0
       '@ingestron/core':
-        specifier: ^1.1.0
-        version: 1.1.0
+        specifier: ^1.1.1
+        version: 1.1.1
       '@ingestron/definitions':
         specifier: ^1.13.0
         version: 1.13.0
@@ -356,12 +356,12 @@ packages:
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
     engines: {node: '>=18.18'}
 
-  '@ingestron/authoring@2.3.0':
-    resolution: {integrity: sha512-ZtYvDOXzAglpLY607pCyTgYViSHAP98xJQr9TZ+nPxrT83oUg2khpS+e12j1lt3HJ3S1P9s84tcpiIspV+KRhA==}
+  '@ingestron/authoring@2.3.1':
+    resolution: {integrity: sha512-Z5yYloIYlyvbjGB4d961HVIdd8erWqjwYX/5of+bxu6jrWHJBdm3b/dVJV/H0l6bgydyVOpaP1NVFUCuJULDOQ==}
     engines: {node: '>=22.13.0'}
 
-  '@ingestron/cli@2.3.0':
-    resolution: {integrity: sha512-KdoApSz8ycGNDBwMsy2qqnhwDchqY8UkbmLxQa4yuvplR3OHsnsUe3xAFpsshA3CTeYyu73/lu8xm7fdjh6aeA==}
+  '@ingestron/cli@2.3.1':
+    resolution: {integrity: sha512-24CUipuWMChcmwF2Ez20vWEndyF6suIz1eRikesoSA1cTiPt8Zxn7V8axHi8ZbWGSHGLcya3N8B/viNCfUcovw==}
     engines: {node: '>=22.13.0'}
     hasBin: true
 
@@ -369,8 +369,8 @@ packages:
     resolution: {integrity: sha512-ybWLmq4xf4RARirY24MxqwzAyS0KDMLMuoWVW71zRxaCXzclDeuKjNx8UYt6Kfhcqwy6aXty2zhJQhj/7LMmbQ==}
     engines: {node: '>=22.13.0'}
 
-  '@ingestron/core@1.1.0':
-    resolution: {integrity: sha512-6e1u6sJNRRsjcMLLhryH0gjDqCl7N2Exvc3CVEo1blvhvriSJBFsjt78tfQDfHHeL/CIcovFKGR5czEPF5eUJg==}
+  '@ingestron/core@1.1.1':
+    resolution: {integrity: sha512-srMNFH2s0vKkMs6BsK9AcKgi3M12301QGIkwguOzJtQoRr2jWt7yR2Cy7JodkxNtZeVg1oy4zG86b3c3aZJGHg==}
     engines: {node: '>=22.13.0'}
 
   '@ingestron/definitions@1.13.0':
@@ -2102,18 +2102,18 @@ snapshots:
 
   '@humanwhocodes/retry@0.4.3': {}
 
-  '@ingestron/authoring@2.3.0':
+  '@ingestron/authoring@2.3.1':
     dependencies:
       '@ingestron/config': 1.7.0
-      '@ingestron/core': 1.1.0
+      '@ingestron/core': 1.1.1
       '@ingestron/definitions': 1.13.0
       '@ingestron/generate': 1.1.0
       yaml: 2.9.1
 
-  '@ingestron/cli@2.3.0':
+  '@ingestron/cli@2.3.1':
     dependencies:
       '@ingestron/config': 1.7.0
-      '@ingestron/core': 1.1.0
+      '@ingestron/core': 1.1.1
       '@ingestron/definitions': 1.13.0
       '@ingestron/generate': 1.1.0
       yaml: 2.9.1
@@ -2123,7 +2123,7 @@ snapshots:
       ajv: 8.20.0
       yaml: 2.9.1
 
-  '@ingestron/core@1.1.0':
+  '@ingestron/core@1.1.1':
     dependencies:
       '@ingestron/config': 1.7.0
       '@ingestron/definitions': 1.13.0
