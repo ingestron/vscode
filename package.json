@@ -107,6 +107,16 @@
         "command": "ingestron.draftContract",
         "title": "Draft contract from sample",
         "category": "Ingestron"
+      },
+      {
+        "command": "ingestron.requestSourceMetadata",
+        "title": "Request source metadata",
+        "category": "Ingestron"
+      },
+      {
+        "command": "ingestron.importSourceMetadata",
+        "title": "Import source metadata…",
+        "category": "Ingestron"
       }
     ],
     "configuration": {
@@ -178,6 +188,16 @@
           "group": "ingestron@5"
         },
         {
+          "command": "ingestron.requestSourceMetadata",
+          "when": "((explorerResourceIsFolder && resourcePath in ingestron.projectFolders) || resourcePath in ingestron.projectFiles)",
+          "group": "ingestron@6"
+        },
+        {
+          "command": "ingestron.importSourceMetadata",
+          "when": "((explorerResourceIsFolder && resourcePath in ingestron.projectFolders) || resourcePath in ingestron.projectFiles)",
+          "group": "ingestron@7"
+        },
+        {
           "command": "ingestron.draftContract",
           "when": "resourceExtname =~ /^\\.(csv|json|jsonl|ndjson)$/",
           "group": "7_modification"
@@ -208,6 +228,16 @@
           "command": "ingestron.platformRequest",
           "when": "resourceScheme == ingestron-generated || resourcePath in ingestron.projectFiles",
           "group": "ingestron@3"
+        },
+        {
+          "command": "ingestron.requestSourceMetadata",
+          "when": "resourceScheme == ingestron-generated || resourcePath in ingestron.projectFiles",
+          "group": "ingestron@4"
+        },
+        {
+          "command": "ingestron.importSourceMetadata",
+          "when": "resourceScheme == ingestron-generated || resourcePath in ingestron.projectFiles",
+          "group": "ingestron@5"
         }
       ],
       "commandPalette": [

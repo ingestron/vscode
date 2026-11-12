@@ -146,6 +146,10 @@ function complete(
       if (suggestion.insertText) item.insertText = suggestion.insertText;
       // YAML counts "-" as part of a word; an empty range keeps the dash and shows every suggestion.
       if (suggestion.afterDash) item.range = new vscode.Range(position, position);
+      // A value with dots or slashes, such as ERP.dbo.Customers, replaces all of what is typed:
+      // the editor's word before the cursor would stop at the first dot.
+      else if (suggestion.replaceFrom !== undefined)
+        item.range = new vscode.Range(document.positionAt(suggestion.replaceFrom), position);
       // Keep the order given: the likely choice first, the ones that cannot be used last.
       item.sortText = String(index).padStart(4, "0");
       if (suggestion.preselect) item.preselect = true;

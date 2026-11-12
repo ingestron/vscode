@@ -5,4 +5,5 @@ export { registerAnnotations } from "./annotations.js";
 export { registerFixes } from "./fixes.js";
 export { registerProblems } from "./problems.js";
 export { registerProviders } from "./providers.js";
+export { applyImport } from "./source-apply.js";
 export { registerSymbols } from "./symbols.js";

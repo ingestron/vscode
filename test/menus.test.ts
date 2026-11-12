@@ -23,13 +23,15 @@ const named = (menu: string, command: string) =>
   menus[menu]!.find((entry) => entry.command === command);
 
 describe("Explorer menu", () => {
-  it("offers check, plan, apply, compare and platform request on a project, in that order", () => {
+  it("offers check, plan, apply, compare, the two requests and the source import on a project, in that order", () => {
     const order = [
       "ingestron.check",
       "ingestron.plan",
       "ingestron.apply",
       "ingestron.compareEnvironments",
       "ingestron.platformRequest",
+      "ingestron.requestSourceMetadata",
+      "ingestron.importSourceMetadata",
     ];
     order.forEach((command, index) => {
       const entry = named("explorer/context", command);
@@ -73,16 +75,27 @@ describe("editor title menu", () => {
     }
   });
 
-  it("puts the other three commands in the overflow menu, only in a project", () => {
+  it("puts the other commands in the overflow menu, only in a project", () => {
     for (const command of [
       "ingestron.check",
       "ingestron.compareEnvironments",
       "ingestron.platformRequest",
+      "ingestron.requestSourceMetadata",
+      "ingestron.importSourceMetadata",
     ]) {
       const entry = named("editor/title", command);
       expect(entry?.group, command).toMatch(/^ingestron@\d$/);
       expect(entry?.when, command).toBe(editorTitleWhen);
     }
+  });
+});
+
+describe("source metadata commands", () => {
+  it("are titled for what they do, with the import asking for a file", () => {
+    const title = (id: string) =>
+      (commands as { command: string; title: string }[]).find((item) => item.command === id)?.title;
+    expect(title("ingestron.requestSourceMetadata")).toBe("Request source metadata");
+    expect(title("ingestron.importSourceMetadata")).toBe("Import source metadata…");
   });
 });
 

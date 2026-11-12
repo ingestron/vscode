@@ -6,4 +6,5 @@ templates/
 project-templates/
 recipes/
 kits/
+source-recipes/
 .vscode-test/

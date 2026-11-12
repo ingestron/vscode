@@ -48,6 +48,7 @@ export default tseslint.config(
       "project-templates/**",
       "recipes/**",
       "kits/**",
+      "source-recipes/**",
     ],
   },
   ...tseslint.configs.recommended,

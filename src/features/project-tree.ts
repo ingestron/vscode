@@ -65,6 +65,20 @@ const actions: { id: string; label: string; icon: string; tooltip?: string }[] =
     tooltip: "Write what to ask the platform team, for the selected environment",
   },
   {
+    id: "ingestron.requestSourceMetadata",
+    label: "Request source metadata",
+    icon: "database",
+    tooltip:
+      "Write what to ask for so Ingestron knows each source table's columns, for the selected environment",
+  },
+  {
+    id: "ingestron.importSourceMetadata",
+    label: "Import source metadata…",
+    icon: "cloud-download",
+    tooltip:
+      "Read a file of columns, a sample or a data contract into the project's source metadata",
+  },
+  {
     id: "ingestron.showGenerated",
     label: "Show generated files",
     icon: "file-code",

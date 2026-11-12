@@ -187,6 +187,8 @@ exports.run = async function run() {
   );
   await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
   await vscode.window.showTextDocument(document);
+  await sourceMetadata(folder);
+  await vscode.window.showTextDocument(document);
 
   const editor = vscode.window.activeTextEditor;
   editor.selection = new vscode.Selection(tablePosition, tablePosition);
@@ -613,6 +615,8 @@ async function projectView() {
     "Apply",
     "Compare environments",
     "Prepare platform request",
+    "Request source metadata",
+    "Import source metadata…",
     "Show generated files",
   ]);
   // Later steps expect the environment this one started with.
@@ -798,6 +802,61 @@ async function moveToStandard(flow, document) {
     actions.map((action) => action.title).join(", "),
   );
   await vscode.commands.executeCommand("workbench.action.files.revert");
+}
+
+/**
+ * Request source metadata opens the request for the one connection; Import source metadata…
+ * reads a sample saved outside sources/, asks for its table once, and writes sources/shop.yaml
+ * and project.yaml's import line, both saved.
+ */
+async function sourceMetadata(folder) {
+  await vscode.commands.executeCommand("ingestron.requestSourceMetadata");
+  await until(
+    () =>
+      vscode.window.activeTextEditor?.document
+        .getText()
+        .startsWith("# Source request: retail (dev)"),
+    "the source request",
+  );
+  await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
+
+  const sample = path.join(folder, "returns.csv");
+  const manifest = path.join(folder, "project.yaml");
+  const kept = fs.readFileSync(manifest, "utf8");
+  fs.writeFileSync(sample, "id,amount,sold_at\n1,12.5,2026-10-01T09:00:00Z\n");
+  const opened = vscode.window.showOpenDialog;
+  const typed = vscode.window.showInputBox;
+  const asked = [];
+  vscode.window.showOpenDialog = async () => [vscode.Uri.file(sample)];
+  vscode.window.showInputBox = async (options) => (asked.push(options.prompt), "returns");
+  try {
+    await vscode.commands.executeCommand("ingestron.importSourceMetadata", vscode.Uri.file(folder));
+  } finally {
+    vscode.window.showOpenDialog = opened;
+    vscode.window.showInputBox = typed;
+  }
+  assert.equal(asked.length, 1, "the table is asked for once");
+  const written = path.join(folder, "sources", "shop.yaml");
+  await until(() => fs.existsSync(written), "the source metadata");
+  const document = fs.readFileSync(written, "utf8");
+  assert.match(document, /kind: SourceMetadata/);
+  assert.match(document, /object: returns/);
+  assert.match(fs.readFileSync(manifest, "utf8"), /- sources\/shop\.yaml/);
+  assert.deepEqual(
+    vscode.workspace.textDocuments.filter((item) => item.isDirty).map((item) => item.uri.fsPath),
+    [],
+    "the import saved what it wrote",
+  );
+  fs.rmSync(path.join(folder, "sources"), { recursive: true });
+  fs.rmSync(sample);
+  fs.writeFileSync(manifest, kept);
+  await until(
+    () =>
+      vscode.workspace.textDocuments.every(
+        (item) => item.uri.fsPath !== manifest || item.getText() === kept,
+      ),
+    "project.yaml to be as it was",
+  );
 }
 
 /** A contract drafted from a sample CSV, written under contracts/ and opened. */

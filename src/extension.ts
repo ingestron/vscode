@@ -5,6 +5,7 @@ import {
   registerCommands,
   registerDraftContract,
   registerFileMoves,
+  registerSourceCommands,
 } from "./vscode/commands/index.js";
 import {
   registerAnnotations,
@@ -40,6 +41,7 @@ export function activate(context: vscode.ExtensionContext): void {
   registerAutoApply(context, state, output, refresh);
   registerWizard(context, output);
   registerDraftContract(context);
+  registerSourceCommands(context, state);
   registerWalkthrough(context, state);
 }
 
