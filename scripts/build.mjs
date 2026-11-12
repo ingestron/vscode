@@ -1,11 +1,13 @@
 // Bundles the extension and the Ingestron packages into dist/extension.js,
 // and copies the data folders the packages ship beside it: the definitions'
 // schemas, the Databricks pack's SQL templates, the ADF pack's connector
-// recipes, the starters (core's project templates) and the published standards (the
-// standards package's kits). In the bundle, import.meta.url is the bundle's own file, so
-// "../schemas" and the others resolve to these copies. The bundle cannot resolve
-// @ingestron/standards; core looks for the kits at "../kits" first.
-import { cpSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+// recipes, the starters (core's project templates), the published standards (the standards
+// package's kits) and the source recipes (its recipes, kept as source-recipes because the
+// ADF pack's recipes are already in recipes). In the bundle, import.meta.url is the bundle's
+// own file, so "../schemas" and the others resolve to these copies. The bundle cannot resolve
+// @ingestron/standards; core looks for the kits at "../kits" and the source recipes at
+// "../source-recipes" first.
+import { cpSync, existsSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
@@ -34,7 +36,15 @@ writeFileSync(join(root, "THIRD_PARTY_NOTICES"), thirdPartyNotices(metafile, roo
 // The data folders come from the packages @ingestron/core itself resolves, the
 // same versions the bundle's code comes from, not whatever the extension lists.
 const core = realpathSync(join(root, "node_modules/@ingestron/core"));
-const installed = (name) => (name === "core" ? core : join(dirname(core), name));
+// Beside core in a pnpm install; else among the extension's own packages, which is where a
+// workspace link to core finds the packages that are not next to it.
+const installed = (path) => {
+  const found = [join(dirname(core), path), join(root, "node_modules/@ingestron", path)].find(
+    (folder) => existsSync(folder),
+  );
+  if (!found) throw new Error(`No installed copy of ${path}`);
+  return found;
+};
 const notGenerated = (path) => !/\/(build|\.generated\.json)(\/|$)/.test(path);
 for (const [from, to] of [
   ["definitions/schemas", "schemas"],
@@ -42,6 +52,7 @@ for (const [from, to] of [
   ["pack-adf/recipes", "recipes"],
   ["core/project-templates", "project-templates"],
   ["standards/kits", "kits"],
+  ["standards/recipes", "source-recipes"],
 ]) {
   rmSync(join(root, to), { recursive: true, force: true });
   cpSync(installed(from), join(root, to), { recursive: true, filter: notGenerated });

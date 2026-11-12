@@ -23,13 +23,14 @@ const named = (menu: string, command: string) =>
   menus[menu]!.find((entry) => entry.command === command);
 
 describe("Explorer menu", () => {
-  it("offers check, plan, apply, compare and platform request on a project, in that order", () => {
+  it("offers check, plan, apply, compare and the two requests on a project, in that order", () => {
     const order = [
       "ingestron.check",
       "ingestron.plan",
       "ingestron.apply",
       "ingestron.compareEnvironments",
       "ingestron.platformRequest",
+      "ingestron.requestSourceMetadata",
     ];
     order.forEach((command, index) => {
       const entry = named("explorer/context", command);
@@ -40,6 +41,24 @@ describe("Explorer menu", () => {
       expect(entry?.when, command).toContain("resourcePath in ingestron.projectFiles");
       expect(entry?.when, command).not.toContain("hasProjects");
     });
+  });
+
+  it("offers Import source metadata on a project folder, and on any file but a project's own once a project is open", () => {
+    const entries = menus["explorer/context"]!.filter(
+      (entry) => entry.command === "ingestron.importSourceMetadata",
+    );
+    expect(entries).toEqual([
+      {
+        command: "ingestron.importSourceMetadata",
+        when: "explorerResourceIsFolder && resourcePath in ingestron.projectFolders",
+        group: "ingestron@7",
+      },
+      {
+        command: "ingestron.importSourceMetadata",
+        when: "!explorerResourceIsFolder && ingestron.hasProjects && !(resourcePath in ingestron.projectFiles)",
+        group: "ingestron@7",
+      },
+    ]);
   });
 
   it("keeps Draft contract on sample files only", () => {
@@ -73,16 +92,30 @@ describe("editor title menu", () => {
     }
   });
 
-  it("puts the other three commands in the overflow menu, only in a project", () => {
+  it("leaves Import source metadata out: a command run from the title would take the open file as the sample", () => {
+    expect(named("editor/title", "ingestron.importSourceMetadata")).toBeUndefined();
+  });
+
+  it("puts the other commands in the overflow menu, only in a project", () => {
     for (const command of [
       "ingestron.check",
       "ingestron.compareEnvironments",
       "ingestron.platformRequest",
+      "ingestron.requestSourceMetadata",
     ]) {
       const entry = named("editor/title", command);
       expect(entry?.group, command).toMatch(/^ingestron@\d$/);
       expect(entry?.when, command).toBe(editorTitleWhen);
     }
+  });
+});
+
+describe("source metadata commands", () => {
+  it("are titled for what they do, with the import asking for a file", () => {
+    const title = (id: string) =>
+      (commands as { command: string; title: string }[]).find((item) => item.command === id)?.title;
+    expect(title("ingestron.requestSourceMetadata")).toBe("Request source metadata");
+    expect(title("ingestron.importSourceMetadata")).toBe("Import source metadata…");
   });
 });
 

@@ -20,6 +20,9 @@ describe("extension package", () => {
     for (const kit of ["duckdb/local-medallion", "databricks/lakehouse-streaming"])
       expect(files).toContain(`kits/${kit}/2026-11-10/kit.yaml`);
     expect(files).toContain("kits/duckdb/local-medallion/2026-11-10/gitignore");
+    // The recipe catalogue, which the bundle reads from beside dist/.
+    expect(files).toContain("source-recipes/sqlserver.yaml");
+    expect(files).toContain("source-recipes/sample.yaml");
     // Screenshots and other scratch output stay out of the package.
     expect(files.filter((file) => file.startsWith(".tmp/"))).toEqual([]);
     // pnpm's workspace settings can name local paths, such as tarballs to test with.

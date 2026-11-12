@@ -7,6 +7,7 @@ import { run } from "@ingestron/cli";
 import * as vscode from "vscode";
 import { inProject, generatedForTable, tableAtCursor, type Generated } from "@ingestron/authoring";
 import { stoppedMessage } from "../../features/stopped.js";
+import { showMarkdown } from "./markdown.js";
 import { previewUri, registerPreviews } from "../editor/index.js";
 import { selectEnvironment, type ExtensionState } from "../state/index.js";
 
@@ -148,7 +149,7 @@ async function showGenerated(
 async function showPlatformRequest(state: ExtensionState, uri?: vscode.Uri): Promise<void> {
   const here = state.hereFor(uri);
   if (!here) return void vscode.window.showWarningMessage("Open a file of an Ingestron project.");
-  await markdown(here.project.request(state.environmentHere(here)));
+  await showMarkdown(here.project.request(state.environmentHere(here)));
 }
 
 /** The differences between two environments, chosen when the project has more than two. */
@@ -168,12 +169,7 @@ async function showComparison(state: ExtensionState, uri?: vscode.Uri): Promise<
         });
   if (picked?.length !== 2) return;
   const content = here.project.compare(picked[0]!, picked[1]!);
-  await markdown(content);
-}
-
-async function markdown(content: string): Promise<void> {
-  const document = await vscode.workspace.openTextDocument({ language: "markdown", content });
-  await vscode.window.showTextDocument(document);
+  await showMarkdown(content);
 }
 
 /** Opens one generated file, by its path in the project, for the file's project. */

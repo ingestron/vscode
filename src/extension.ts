@@ -5,12 +5,16 @@ import {
   registerCommands,
   registerDraftContract,
   registerFileMoves,
+  registerSourceCommands,
+  showMarkdown,
 } from "./vscode/commands/index.js";
 import {
   registerAnnotations,
   registerFixes,
+  registerImportQueue,
   registerProblems,
   registerProviders,
+  registerSourceWatch,
   registerSymbols,
 } from "./vscode/editor/index.js";
 import { ExtensionState, registerContextKeys } from "./vscode/state/index.js";
@@ -40,6 +44,9 @@ export function activate(context: vscode.ExtensionContext): void {
   registerAutoApply(context, state, output, refresh);
   registerWizard(context, output);
   registerDraftContract(context);
+  registerImportQueue(context);
+  registerSourceCommands(context, state);
+  registerSourceWatch(context, state, showMarkdown);
   registerWalkthrough(context, state);
 }
 

@@ -53,7 +53,7 @@ describe("projectTree", () => {
     ]);
   });
 
-  it("lists the six actions in order, each carrying the project folder", () => {
+  it("lists the eight actions in order, each carrying the project folder", () => {
     const actions = projectTree([retail], uriOf).filter((node) => node.command);
     expect(actions.map((node) => [node.label, node.command?.id])).toEqual([
       ["Check", "ingestron.check"],
@@ -61,6 +61,8 @@ describe("projectTree", () => {
       ["Apply", "ingestron.apply"],
       ["Compare environments", "ingestron.compareEnvironments"],
       ["Prepare platform request", "ingestron.platformRequest"],
+      ["Request source metadata", "ingestron.requestSourceMetadata"],
+      ["Import source metadata…", "ingestron.importSourceMetadata"],
       ["Show generated files", "ingestron.showGenerated"],
     ]);
     for (const node of actions) expect(node.command?.args).toEqual([{ uri: "/work/retail" }]);
@@ -80,6 +82,12 @@ describe("projectTree", () => {
     expect(tooltip("Prepare platform request")).toBe(
       "Write what to ask the platform team, for the selected environment",
     );
+    expect(tooltip("Request source metadata")).toBe(
+      "Write what to ask for so Ingestron knows each source table's columns, for the selected environment",
+    );
+    expect(tooltip("Import source metadata…")).toBe(
+      "Read a file of columns, a sample or a data contract into the project's source metadata",
+    );
     expect(tooltip("Show generated files")).toBe(
       "Show the files generated for the selected environment",
     );
@@ -97,7 +105,7 @@ describe("projectTree", () => {
   it("leaves out the environments when the project declares none", () => {
     const nodes = projectTree([{ ...retail, environments: [] }]);
     expect(nodes.map((node) => node.label)).not.toContain("Environments");
-    expect(nodes).toHaveLength(6);
+    expect(nodes).toHaveLength(8);
   });
 
   it("one project shows no project level", () => {
@@ -109,6 +117,8 @@ describe("projectTree", () => {
       "Apply",
       "Compare environments",
       "Prepare platform request",
+      "Request source metadata",
+      "Import source metadata…",
       "Show generated files",
     ]);
   });
