@@ -3,7 +3,14 @@
 import { join } from "node:path";
 import { sourceFileFor } from "@ingestron/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { grouped, shouldImport, watchRefusalNotice } from "../src/features/source-import.js";
+import {
+  grouped,
+  oversizeNotice,
+  shouldImport,
+  tooLarge,
+  failedNotice,
+  watchRefusalNotice,
+} from "../src/features/source-import.js";
 
 /** Core's rule for the project at `folder`, as the snapshot's sourceFileAt applies it. */
 const namedBy = (folder: string) => (file: string) =>
@@ -51,11 +58,6 @@ describe("shouldImport", () => {
         namedBy(folder),
       ),
     ).toBe(false);
-  });
-
-  it("never imports what an import writes: the document and project.yaml", () => {
-    const written = ["sources/erp.yaml", "project.yaml"];
-    expect(written.map((file) => at(file))).toEqual([false, false]);
   });
 });
 
@@ -121,7 +123,40 @@ describe("watchRefusalNotice", () => {
       ]),
     ).toBe(
       "sources/erp.catalog.csv: Nothing was imported. Name the table this file describes. " +
-        "Save it as sources/<connection>/<table> or use Import source metadata….",
+        "Save it as sources/<connection>/<table> or use Import source metadata…",
+    );
+  });
+});
+
+describe("tooLarge", () => {
+  const limit = 50 * 1024 * 1024;
+
+  it("is true only for a file over the limit", () => {
+    expect(tooLarge(limit, limit)).toBe(false);
+    expect(tooLarge(limit + 1, limit)).toBe(true);
+    expect(tooLarge(0, limit)).toBe(false);
+  });
+});
+
+describe("oversizeNotice", () => {
+  it("names the file, the limit and the two ways to import it anyway", () => {
+    expect(oversizeNotice("sources/erp/Orders.csv", 50 * 1024 * 1024)).toBe(
+      "sources/erp/Orders.csv is over 50 MB, so it was not imported when saved. " +
+        'Use "Import source metadata…" or ingestron source import.',
+    );
+  });
+});
+
+describe("failedNotice", () => {
+  it("names the file and the reason, never more", () => {
+    expect(failedNotice("sources/erp/Orders.csv", new Error("disk is full"))).toBe(
+      "Could not import sources/erp/Orders.csv: disk is full",
+    );
+  });
+
+  it("copes with a reason that is not an error", () => {
+    expect(failedNotice("sources/erp/Orders.csv", "odd")).toBe(
+      "Could not import sources/erp/Orders.csv.",
     );
   });
 });

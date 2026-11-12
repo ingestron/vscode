@@ -955,6 +955,18 @@ async function sourceWatching(folder) {
     assert.deepEqual(dirty(), []);
     await reset();
 
+    // A file over the limit is left alone, with a warning that names it and says what to do.
+    const big = path.join(folder, "sources", "shop", "big.csv");
+    put(big, Buffer.alloc(50 * 1024 * 1024 + 1, "a"));
+    await until(() => notices.warnings.length > 0, "the warning for a large file");
+    await wait(1500);
+    assert.equal(notices.warnings.length, 1);
+    assert.match(notices.warnings[0], /^sources\/shop\/big\.csv is over 50 MB/);
+    assert.match(notices.warnings[0], /Import source metadata…/);
+    assert.equal(fs.existsSync(written), false);
+    assert.deepEqual(dirty(), []);
+    await reset();
+
     await nestedProject(folder, notices, put);
     await withTypingInProject(folder, manifest, kept, written, columns, dirty, put, reset, notices);
   } finally {

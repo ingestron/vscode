@@ -69,10 +69,8 @@ async function stage(
   const document = await existing(uri);
   if (document?.getText() === text) return undefined;
   if (document) edit.replace(uri, allOf(document), text);
-  else {
-    edit.createFile(uri, { ignoreIfExists: true });
-    edit.insert(uri, new vscode.Position(0, 0), text);
-  }
+  // Created with its text, so the file is never on disk empty.
+  else edit.createFile(uri, { ignoreIfExists: true, contents: new TextEncoder().encode(text) });
   return { file, uri, save: file !== "project.yaml" || !document?.isDirty };
 }
 

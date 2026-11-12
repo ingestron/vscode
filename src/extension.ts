@@ -11,6 +11,7 @@ import {
 import {
   registerAnnotations,
   registerFixes,
+  registerImportQueue,
   registerProblems,
   registerProviders,
   registerSourceWatch,
@@ -43,6 +44,7 @@ export function activate(context: vscode.ExtensionContext): void {
   registerAutoApply(context, state, output, refresh);
   registerWizard(context, output);
   registerDraftContract(context);
+  registerImportQueue(context);
   registerSourceCommands(context, state);
   registerSourceWatch(context, state, showMarkdown);
   registerWalkthrough(context, state);

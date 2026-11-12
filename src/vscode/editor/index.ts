@@ -6,5 +6,6 @@ export { registerFixes } from "./fixes.js";
 export { registerProblems } from "./problems.js";
 export { registerProviders } from "./providers.js";
 export { applyImport, reportImport } from "./source-apply.js";
+export { queued, registerImportQueue } from "./source-queue.js";
 export { registerSourceWatch } from "./source-watch.js";
 export { registerSymbols } from "./symbols.js";

@@ -102,6 +102,8 @@ export function shouldImport(
 ): boolean {
   const inside = inProject(event.projectFolder, event.path);
   if (inside === undefined || !inside.startsWith("sources/")) return false;
+  // Editors and the system leave hidden files beside a file (.DS_Store, swap files, lock files):
+  // importing those would only warn. A hidden sample is still imported by the command and the CLI.
   if (inside.split("/").some((part) => part.startsWith("."))) return false;
   return sourceFileAt(event.path) !== undefined;
 }
@@ -139,7 +141,28 @@ export function grouped(
  */
 export function watchRefusalNotice(file: string, refused: readonly string[]): string {
   const hint = needsObject(refused)
-    ? " Save it as sources/<connection>/<table> or use Import source metadata…."
+    ? " Save it as sources/<connection>/<table> or use Import source metadata…"
     : "";
   return `${file}: ${refusalNotice(refused)}${hint}`;
+}
+
+/** True when a file is too large to import as soon as it is saved. */
+export function tooLarge(bytes: number, limit: number): boolean {
+  return bytes > limit;
+}
+
+/** The warning for a saved file left alone for its size, with the ways to import it anyway. */
+export function oversizeNotice(file: string, limit: number): string {
+  const megabytes = Math.round(limit / (1024 * 1024));
+  return (
+    `${file} is over ${megabytes} MB, so it was not imported when saved. ` +
+    'Use "Import source metadata…" or ingestron source import.'
+  );
+}
+
+/** The warning for a saved file that could not be imported: the reason, never the file's content. */
+export function failedNotice(file: string, error: unknown): string {
+  return error instanceof Error
+    ? `Could not import ${file}: ${error.message}`
+    : `Could not import ${file}.`;
 }

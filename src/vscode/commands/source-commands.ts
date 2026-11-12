@@ -11,7 +11,7 @@ import {
   refusalNotice,
   requestChoices,
 } from "../../features/source-import.js";
-import { reportImport } from "../editor/index.js";
+import { queued, reportImport } from "../editor/index.js";
 import type { ExtensionState, Here } from "../state/index.js";
 import { showMarkdown } from "./markdown.js";
 
@@ -74,7 +74,7 @@ async function importSourceMetadata(state: ExtensionState, uri?: vscode.Uri): Pr
     at: new Date().toISOString(),
   };
   const result = await importFile(here.project, file, options);
-  if (result) await finish(result, here.project.folder);
+  if (result) await queued(() => finish(result, here.project.folder));
 }
 
 type ImportOptions = Parameters<ProjectSnapshot["importSource"]>[2];
