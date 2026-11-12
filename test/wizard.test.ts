@@ -34,7 +34,12 @@ vi.mock("vscode", () => ({
     },
   },
   window: {
-    showQuickPick: async (items: (string | { label: string; id?: string; via?: string })[]) => {
+    showQuickPick: async (
+      items: (string | { label: string; id?: string; via?: string })[],
+      options?: { canPickMany?: boolean },
+    ) => {
+      // The assistants step, with none ticked, is tested in wizard-assistants.test.ts.
+      if (options?.canPickMany) return [];
       state.menus.push(items.map((item) => (typeof item === "string" ? item : item.label)));
       const choice = state.choices.shift();
       if (choice === undefined) return undefined;

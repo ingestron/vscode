@@ -120,12 +120,13 @@ describe("source metadata commands", () => {
 });
 
 describe("command palette", () => {
-  it("lists only Draft contract as conditional", () => {
+  it("lists only Draft contract and the project-only commands as conditional", () => {
     expect(menus.commandPalette).toEqual([
       {
         command: "ingestron.draftContract",
         when: "resourceExtname =~ /^\\.(csv|json|jsonl|ndjson)$/",
       },
+      { command: "ingestron.addAssistantFiles", when: "ingestron.hasProjects" },
     ]);
   });
 });
