@@ -30,7 +30,9 @@ const commands = some({
   executeCommand: async () => undefined,
 });
 const window = some({
-  showQuickPick: async (items) => {
+  showQuickPick: async (items, options) => {
+    // The assistants step: none ticked.
+    if (options && options.canPickMany) return [];
     const list = await items;
     picks.push(list.map(({ label, description }) => ({ label, description })));
     return picks.length === 1

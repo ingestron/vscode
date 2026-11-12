@@ -190,6 +190,8 @@ exports.run = async function run() {
   await sourceMetadata(folder);
   await sourceWatching(folder);
   await vscode.window.showTextDocument(document);
+  await require("./assistants.cjs").run(folder);
+  await vscode.window.showTextDocument(document);
 
   const editor = vscode.window.activeTextEditor;
   editor.selection = new vscode.Selection(tablePosition, tablePosition);

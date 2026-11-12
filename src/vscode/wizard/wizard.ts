@@ -5,7 +5,9 @@
 import { join } from "node:path";
 import { run } from "@ingestron/cli";
 import * as vscode from "vscode";
+import { assistantFlags } from "../../features/assistants.js";
 import { chooseProject } from "./wizard-choices.js";
+import { chooseNewProjectAssistants } from "./wizard-assistants.js";
 import { chooseKit, chooseStart, chooseStarter } from "./wizard-starters.js";
 
 /** Registers the New project command. */
@@ -23,6 +25,8 @@ async function newProject(output: vscode.OutputChannel): Promise<void> {
   const start = await chooseStart();
   const flags = await flagsFor(start);
   if (!flags) return;
+  const assistants = await chooseNewProjectAssistants();
+  if (!assistants) return;
   const folder = (
     await vscode.window.showOpenDialog({
       canSelectFolders: true,
@@ -34,7 +38,7 @@ async function newProject(output: vscode.OutputChannel): Promise<void> {
   output.clear();
   output.show(true);
   let written = "";
-  const code = run(["init", folder.fsPath, ...flags, "--yes"], {
+  const code = run(["init", folder.fsPath, ...flags, ...assistantFlags(assistants), "--yes"], {
     cwd: folder.fsPath,
     write: (text) => {
       written += text;

@@ -36,7 +36,9 @@ vi.mock("vscode", () => ({
   Uri: { file: (fsPath: string) => ({ fsPath }) },
   workspace: { getWorkspaceFolder: () => true },
   window: {
-    showQuickPick: async (items: Item[]) => {
+    showQuickPick: async (items: Item[], options?: { canPickMany?: boolean }) => {
+      // The many-choice step (none ticked) is not what this file is about.
+      if (options?.canPickMany) return [];
       state.menus.push(items);
       const choice = state.choices.shift();
       if (choice === undefined) return undefined;

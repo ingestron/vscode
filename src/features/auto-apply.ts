@@ -17,18 +17,23 @@ export interface Shown {
 
 const pad = " ".repeat(10);
 const changeLine = /^(create|update|delete|adopt|forget|conflict) /;
+/** The lines the CLI prints about the project guide, after the output folders. */
+const guideLine = /^AGENTS\.md: /;
 
 /**
  * The activity lines for one run, from the CLI's apply output: a line for each output
  * folder, such as `databricks (dev, prod): up to date`, with the files that changed below
- * it, then a line for each folder that is no longer generated. When the definitions have
- * problems, one line says which environments have them and where to see them.
+ * it, then a line for each folder that is no longer generated, then each line the CLI printed
+ * about AGENTS.md as it is. When the definitions have problems, one line says which environments
+ * have them and where to see them.
  */
 export function activity(output: string, at: Date, shown: Shown): string {
   const time = at.toTimeString().slice(0, 8);
+  const all = output.split("\n");
+  const guide = all.filter((line) => guideLine.test(line)).map((line) => `${time}  ${line}\n`);
   const stopped = problemsLine(output, shown);
-  if (stopped) return `${time}  not applied: ${stopped}\n`;
-  const lines = output.split("\n");
+  if (stopped) return `${time}  not applied: ${stopped}\n${guide.join("")}`;
+  const lines = all.filter((line) => !guideLine.test(line));
   const folders = sections(lines).map(
     ({ heading, body }) => `${time}  ${heading}: ${summary(body)}`,
   );
@@ -36,8 +41,8 @@ export function activity(output: string, at: Date, shown: Shown): string {
     .filter((line) => / no longer generated\./.test(line))
     .map((line) => `${time}  ${line}\n`);
   if (folders.length === 0 && retired.length === 0)
-    return `${time}  nothing applied: ${firstSentence(lines) ?? "nothing to generate"}\n`;
-  return [...folders, ...retired].join("");
+    return `${time}  nothing applied: ${firstSentence(lines) ?? "nothing to generate"}\n${guide.join("")}`;
+  return [...folders, ...retired, ...guide].join("");
 }
 
 /**
