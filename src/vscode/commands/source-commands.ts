@@ -5,9 +5,13 @@
 import * as vscode from "vscode";
 import type { ProjectSnapshot, SourceImportEdit } from "@ingestron/authoring";
 import {
+  connectionChoice,
+  importFailureNotice,
   importNotice,
   needsObject,
+  noConnectionNotice,
   refusalNotice,
+  requestChoices,
   showChanges,
 } from "../../features/source-import.js";
 import { applyImport } from "../editor/index.js";
@@ -42,13 +46,9 @@ function connectionsOf(project: ProjectSnapshot): string[] {
 async function requestSourceMetadata(state: ExtensionState, uri?: vscode.Uri): Promise<void> {
   const here = state.hereFor(uri);
   if (!here) return void vscode.window.showWarningMessage("Open a file of an Ingestron project.");
-  const connections = connectionsOf(here.project);
+  const choices = requestChoices(connectionsOf(here.project));
   let connection: string | undefined;
-  if (connections.length >= 2) {
-    const choices = [
-      { label: "All connections", connection: undefined },
-      ...connections.map((id) => ({ label: id, connection: id })),
-    ];
+  if (choices) {
     const chosen = await vscode.window.showQuickPick(choices, {
       placeHolder: "The connection to ask about",
     });
@@ -58,74 +58,107 @@ async function requestSourceMetadata(state: ExtensionState, uri?: vscode.Uri): P
   await showMarkdown(here.project.sourceRequest(state.environmentHere(here), connection));
 }
 
-/** Reads a chosen file into the project's source metadata and tells the person what changed. */
+/**
+ * Reads a file into the project's source metadata and tells the person what changed. The file is
+ * the one clicked in the Explorer, else the one chosen in the open dialog; a folder, a project
+ * view row or the Command Palette gives the project only.
+ */
 async function importSourceMetadata(state: ExtensionState, uri?: vscode.Uri): Promise<void> {
-  const here = state.hereFor(uri);
+  const clicked = await clickedFile(uri);
+  // A clicked file outside every project is imported into the project of the active editor.
+  const here = state.hereFor(uri) ?? (clicked ? state.hereFor(undefined) : undefined);
   if (!here) return void vscode.window.showWarningMessage("Open a file of an Ingestron project.");
-  const file = (
-    await vscode.window.showOpenDialog({
-      canSelectMany: false,
-      defaultUri: vscode.Uri.file(here.project.folder),
-      openLabel: "Import",
-      title: "The file that describes a source's tables",
-    })
-  )?.[0];
-  if (!file) return;
-  const connection = await connectionFor(here, file);
-  if (connection === null) return;
-  const contents = await vscode.workspace.fs.readFile(file);
+  const file = clicked ?? (await chooseFile(here.project.folder));
+  const connection = file && (await connectionFor(here, file));
+  if (!file || connection === null) return;
   const options = {
     ...(connection && { connection }),
     ...optionalEnvironment(state.environmentHere(here)),
     at: new Date().toISOString(),
   };
-  let result = here.project.importSource(file.fsPath, contents, options);
-  if ("refused" in result && needsObject(result.refused)) {
-    const object = await vscode.window.showInputBox({
-      prompt: "The table this file describes, such as ERP.dbo.Customers",
-      validateInput: (value) => (value.trim() === "" ? "Give the table's name." : undefined),
-    });
-    if (!object) return;
-    result = here.project.importSource(file.fsPath, contents, {
-      ...options,
-      object: object.trim(),
-    });
+  const result = await importFile(here.project, file, options);
+  if (result) await finish(result, here.project.folder);
+}
+
+type ImportOptions = Parameters<ProjectSnapshot["importSource"]>[2];
+
+/**
+ * Imports the file; when it stops for want of the table it describes, asks for the table once and
+ * imports again. Undefined when the person gives none.
+ */
+async function importFile(
+  project: ProjectSnapshot,
+  file: vscode.Uri,
+  options: ImportOptions,
+): Promise<ReturnType<ProjectSnapshot["importSource"]> | undefined> {
+  const contents = await vscode.workspace.fs.readFile(file);
+  const result = project.importSource(file.fsPath, contents, options);
+  if (!("refused" in result) || !needsObject(result.refused)) return result;
+  const object = await vscode.window.showInputBox({
+    prompt: "The table this file describes, such as ERP.dbo.Customers",
+    validateInput: (value) => (value.trim() === "" ? "Give the table's name." : undefined),
+  });
+  return object
+    ? project.importSource(file.fsPath, contents, { ...options, object: object.trim() })
+    : undefined;
+}
+
+/** The file a command was run on, when it is a file; undefined for a folder or nothing. */
+async function clickedFile(uri: vscode.Uri | undefined): Promise<vscode.Uri | undefined> {
+  if (typeof uri?.scheme !== "string" || uri.scheme !== "file") return undefined;
+  try {
+    const { type } = await vscode.workspace.fs.stat(uri);
+    return type & vscode.FileType.Directory ? undefined : uri;
+  } catch {
+    return undefined;
   }
-  if ("refused" in result)
-    return void vscode.window.showWarningMessage(refusalNotice(result.refused));
-  await finish(result, here.project.folder);
+}
+
+async function chooseFile(folder: string): Promise<vscode.Uri | undefined> {
+  const chosen = await vscode.window.showOpenDialog({
+    canSelectMany: false,
+    defaultUri: vscode.Uri.file(folder),
+    openLabel: "Import",
+    title: "The file that describes a source's tables",
+  });
+  return chosen?.[0];
 }
 
 const optionalEnvironment = (environment: string | undefined) =>
   environment ? { environment } : {};
 
 /**
- * The connection the file describes when its path does not name one: the project's only
- * connection, else the person's choice. Undefined when the path names it; null when there is
+ * The connection the file describes when its path does not name one (the project's only
+ * connection, else the person's choice). Undefined when the path names it; null when there is
  * none to choose or the person chose nothing.
  */
 async function connectionFor(here: Here, file: vscode.Uri): Promise<string | undefined | null> {
-  if (here.project.sourceFileAt(file.fsPath)) return undefined;
-  const connections = connectionsOf(here.project);
-  if (connections.length === 0) {
-    void vscode.window.showWarningMessage("The project has no connection to import for.");
+  const choice = connectionChoice(
+    here.project.sourceFileAt(file.fsPath) !== undefined,
+    connectionsOf(here.project),
+  );
+  if (choice.kind === "path") return undefined;
+  if (choice.kind === "use") return choice.connection;
+  if (choice.kind === "none") {
+    void vscode.window.showWarningMessage(noConnectionNotice);
     return null;
   }
-  if (connections.length === 1) return connections[0]!;
-  return (
-    (await vscode.window.showQuickPick(connections, {
-      placeHolder: "The connection this file describes",
-    })) ?? null
-  );
+  const picked = await vscode.window.showQuickPick(choice.connections, {
+    placeHolder: "The connection this file describes",
+  });
+  return picked ?? null;
 }
 
-/** Writes the import and tells the person, with the button that shows every change. */
-async function finish(imported: SourceImportEdit, folder: string): Promise<void> {
-  const unwritten = await applyImport(imported, folder);
-  if (unwritten)
-    return void vscode.window.showWarningMessage(
-      `Could not write ${unwritten}, so the import stopped.`,
-    );
+/** Tells the person why an import stopped, or writes it and tells them what changed. */
+async function finish(
+  result: SourceImportEdit | { refused: string[] },
+  folder: string,
+): Promise<void> {
+  if ("refused" in result)
+    return void vscode.window.showWarningMessage(refusalNotice(result.refused));
+  const imported = result;
+  const failure = await applyImport(imported, folder);
+  if (failure) return void vscode.window.showWarningMessage(importFailureNotice(failure));
   const { message, buttons } = importNotice(imported);
   // Not awaited: the command is done when the files are written, not when the message is closed.
   void vscode.window.showInformationMessage(message, ...buttons).then((pressed) => {

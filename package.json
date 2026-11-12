@@ -194,7 +194,12 @@
         },
         {
           "command": "ingestron.importSourceMetadata",
-          "when": "((explorerResourceIsFolder && resourcePath in ingestron.projectFolders) || resourcePath in ingestron.projectFiles)",
+          "when": "explorerResourceIsFolder && resourcePath in ingestron.projectFolders",
+          "group": "ingestron@7"
+        },
+        {
+          "command": "ingestron.importSourceMetadata",
+          "when": "!explorerResourceIsFolder && ingestron.hasProjects",
           "group": "ingestron@7"
         },
         {
@@ -233,11 +238,6 @@
           "command": "ingestron.requestSourceMetadata",
           "when": "resourceScheme == ingestron-generated || resourcePath in ingestron.projectFiles",
           "group": "ingestron@4"
-        },
-        {
-          "command": "ingestron.importSourceMetadata",
-          "when": "resourceScheme == ingestron-generated || resourcePath in ingestron.projectFiles",
-          "group": "ingestron@5"
         }
       ],
       "commandPalette": [

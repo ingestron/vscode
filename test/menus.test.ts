@@ -23,7 +23,7 @@ const named = (menu: string, command: string) =>
   menus[menu]!.find((entry) => entry.command === command);
 
 describe("Explorer menu", () => {
-  it("offers check, plan, apply, compare, the two requests and the source import on a project, in that order", () => {
+  it("offers check, plan, apply, compare and the two requests on a project, in that order", () => {
     const order = [
       "ingestron.check",
       "ingestron.plan",
@@ -31,7 +31,6 @@ describe("Explorer menu", () => {
       "ingestron.compareEnvironments",
       "ingestron.platformRequest",
       "ingestron.requestSourceMetadata",
-      "ingestron.importSourceMetadata",
     ];
     order.forEach((command, index) => {
       const entry = named("explorer/context", command);
@@ -42,6 +41,24 @@ describe("Explorer menu", () => {
       expect(entry?.when, command).toContain("resourcePath in ingestron.projectFiles");
       expect(entry?.when, command).not.toContain("hasProjects");
     });
+  });
+
+  it("offers Import source metadata on a project folder, and on any file once a project is open", () => {
+    const entries = menus["explorer/context"]!.filter(
+      (entry) => entry.command === "ingestron.importSourceMetadata",
+    );
+    expect(entries).toEqual([
+      {
+        command: "ingestron.importSourceMetadata",
+        when: "explorerResourceIsFolder && resourcePath in ingestron.projectFolders",
+        group: "ingestron@7",
+      },
+      {
+        command: "ingestron.importSourceMetadata",
+        when: "!explorerResourceIsFolder && ingestron.hasProjects",
+        group: "ingestron@7",
+      },
+    ]);
   });
 
   it("keeps Draft contract on sample files only", () => {
@@ -81,7 +98,6 @@ describe("editor title menu", () => {
       "ingestron.compareEnvironments",
       "ingestron.platformRequest",
       "ingestron.requestSourceMetadata",
-      "ingestron.importSourceMetadata",
     ]) {
       const entry = named("editor/title", command);
       expect(entry?.group, command).toMatch(/^ingestron@\d$/);
@@ -96,6 +112,12 @@ describe("source metadata commands", () => {
       (commands as { command: string; title: string }[]).find((item) => item.command === id)?.title;
     expect(title("ingestron.requestSourceMetadata")).toBe("Request source metadata");
     expect(title("ingestron.importSourceMetadata")).toBe("Import source metadata…");
+  });
+});
+
+describe("editor title menu and Import source metadata", () => {
+  it("leaves the import out: a command run from the title would take the open file as the sample", () => {
+    expect(named("editor/title", "ingestron.importSourceMetadata")).toBeUndefined();
   });
 });
 

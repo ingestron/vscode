@@ -10,16 +10,17 @@ export const showChanges = "Show all changes";
 
 /**
  * What to tell the person after an import: the first line of its changes, then how many are
- * breaking when any are, and the button that shows all of them.
+ * breaking when any are, and the button that shows all of them when there is more than that
+ * line (a change or a note).
  */
 export function importNotice(edit: { summary: string; breaking: number }): {
   message: string;
   buttons: string[];
 } {
-  const first = edit.summary.split("\n")[0]!;
+  const [first, ...rest] = edit.summary.split("\n");
   return {
-    message: edit.breaking > 0 ? `${first} ${edit.breaking} breaking.` : first,
-    buttons: [showChanges],
+    message: edit.breaking > 0 ? `${first} ${edit.breaking} breaking.` : first!,
+    buttons: rest.some((line) => line.trim() !== "") ? [showChanges] : [],
   };
 }
 
@@ -33,4 +34,55 @@ export function refusalNotice(refused: readonly string[]): string {
   // The editor asks for the table in a box; it has no --object option to name.
   const reasons = refused.map((reason) => reason.replace(" with --object.", "."));
   return ["Nothing was imported.", ...reasons].join(" ");
+}
+
+/** The warning for a project with no connection to import for. */
+export const noConnectionNotice = "The project has no connection to import for.";
+
+/** The choices of Request source metadata: every connection first. Undefined when fewer than two. */
+export function requestChoices(
+  connections: readonly string[],
+): { label: string; connection?: string }[] | undefined {
+  if (connections.length < 2) return undefined;
+  return [
+    { label: "All connections" },
+    ...connections.map((connection) => ({ label: connection, connection })),
+  ];
+}
+
+/**
+ * Which connection a file is imported for: the one its path names (`path`), else the project's
+ * only connection (`use`), else the person's pick among several (`pick`), or `none` when the
+ * project has no connection.
+ */
+export type ConnectionChoice =
+  | { kind: "path" }
+  | { kind: "use"; connection: string }
+  | { kind: "pick"; connections: string[] }
+  | { kind: "none" };
+
+/** Decides how the connection of an import is found. */
+export function connectionChoice(
+  pathNamesOne: boolean,
+  connections: readonly string[],
+): ConnectionChoice {
+  if (pathNamesOne) return { kind: "path" };
+  const [only] = connections;
+  if (only === undefined) return { kind: "none" };
+  return connections.length === 1
+    ? { kind: "use", connection: only }
+    : { kind: "pick", connections: [...connections] };
+}
+
+/** Where an import could not be finished: writing a file's change, or saving the file after it. */
+export interface ImportFailure {
+  file: string;
+  step: "write" | "save";
+}
+
+/** The warning for an import that could not be finished. */
+export function importFailureNotice({ file, step }: ImportFailure): string {
+  return step === "write"
+    ? `Could not write ${file}.`
+    : `Wrote the import, but could not save ${file}.`;
 }

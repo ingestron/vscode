@@ -805,9 +805,10 @@ async function moveToStandard(flow, document) {
 }
 
 /**
- * Request source metadata opens the request for the one connection; Import source metadata…
+ * Request source metadata opens the request for the one connection. Import source metadata…
  * reads a sample saved outside sources/, asks for its table once, and writes sources/shop.yaml
- * and project.yaml's import line, both saved.
+ * and project.yaml's import line: both saved when project.yaml had no unsaved changes, and
+ * only sources/shop.yaml when it had (its own typing stays unsaved).
  */
 async function sourceMetadata(folder) {
   await vscode.commands.executeCommand("ingestron.requestSourceMetadata");
@@ -822,41 +823,63 @@ async function sourceMetadata(folder) {
 
   const sample = path.join(folder, "returns.csv");
   const manifest = path.join(folder, "project.yaml");
+  const written = path.join(folder, "sources", "shop.yaml");
   const kept = fs.readFileSync(manifest, "utf8");
   fs.writeFileSync(sample, "id,amount,sold_at\n1,12.5,2026-10-01T09:00:00Z\n");
+  const dirty = () =>
+    vscode.workspace.textDocuments.filter((item) => item.isDirty).map((item) => item.uri.fsPath);
+  const restore = async () => {
+    fs.rmSync(path.join(folder, "sources"), { recursive: true, force: true });
+    fs.writeFileSync(manifest, kept);
+    await until(
+      () =>
+        vscode.workspace.textDocuments.every(
+          (item) => item.uri.fsPath !== manifest || (!item.isDirty && item.getText() === kept),
+        ),
+      "project.yaml to be as it was",
+    );
+  };
+
+  // A file clicked in the Explorer is the sample: no open dialog. project.yaml is clean.
+  const asked = await importing(async () => [], sample, vscode.Uri.file(sample));
+  assert.equal(asked.length, 1, "the table is asked for once");
+  await until(() => fs.existsSync(written), "the source metadata");
+  assert.match(fs.readFileSync(written, "utf8"), /kind: SourceMetadata/);
+  assert.match(fs.readFileSync(written, "utf8"), /object: returns/);
+  assert.match(fs.readFileSync(manifest, "utf8"), /- sources\/shop\.yaml/);
+  assert.deepEqual(dirty(), [], "the import saved what it wrote");
+  await restore();
+
+  // From the project's folder the dialog picks it. project.yaml has typing that is not saved.
+  const editor = await vscode.window.showTextDocument(vscode.Uri.file(manifest));
+  await editor.edit((edit) => edit.insert(new vscode.Position(0, 0), "# typed, not saved\n"));
+  await importing(async () => [vscode.Uri.file(sample)], sample, vscode.Uri.file(folder));
+  await until(() => fs.existsSync(written), "the source metadata, with project.yaml open");
+  const text = editor.document.getText();
+  assert.match(text, /^# typed, not saved\n/, "the typing stays");
+  assert.match(text, /- sources\/shop\.yaml/, "the import line is in the open text");
+  assert.equal(editor.document.isDirty, true, "project.yaml is left unsaved");
+  assert.equal(fs.readFileSync(manifest, "utf8"), kept, "nothing of it reached the disk");
+  assert.deepEqual(dirty(), [manifest], "only project.yaml is unsaved");
+  await vscode.commands.executeCommand("workbench.action.files.revert");
+  await restore();
+  fs.rmSync(sample);
+}
+
+/** Runs Import source metadata… with `dialog` as the open dialog; returns the prompts for the table. */
+async function importing(dialog, sample, argument) {
   const opened = vscode.window.showOpenDialog;
   const typed = vscode.window.showInputBox;
   const asked = [];
-  vscode.window.showOpenDialog = async () => [vscode.Uri.file(sample)];
+  vscode.window.showOpenDialog = dialog;
   vscode.window.showInputBox = async (options) => (asked.push(options.prompt), "returns");
   try {
-    await vscode.commands.executeCommand("ingestron.importSourceMetadata", vscode.Uri.file(folder));
+    await vscode.commands.executeCommand("ingestron.importSourceMetadata", argument);
   } finally {
     vscode.window.showOpenDialog = opened;
     vscode.window.showInputBox = typed;
   }
-  assert.equal(asked.length, 1, "the table is asked for once");
-  const written = path.join(folder, "sources", "shop.yaml");
-  await until(() => fs.existsSync(written), "the source metadata");
-  const document = fs.readFileSync(written, "utf8");
-  assert.match(document, /kind: SourceMetadata/);
-  assert.match(document, /object: returns/);
-  assert.match(fs.readFileSync(manifest, "utf8"), /- sources\/shop\.yaml/);
-  assert.deepEqual(
-    vscode.workspace.textDocuments.filter((item) => item.isDirty).map((item) => item.uri.fsPath),
-    [],
-    "the import saved what it wrote",
-  );
-  fs.rmSync(path.join(folder, "sources"), { recursive: true });
-  fs.rmSync(sample);
-  fs.writeFileSync(manifest, kept);
-  await until(
-    () =>
-      vscode.workspace.textDocuments.every(
-        (item) => item.uri.fsPath !== manifest || item.getText() === kept,
-      ),
-    "project.yaml to be as it was",
-  );
+  return asked;
 }
 
 /** A contract drafted from a sample CSV, written under contracts/ and opened. */
