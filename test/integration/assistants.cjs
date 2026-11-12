@@ -8,9 +8,10 @@ const vscode = require("vscode");
 /** Runs the command with `picks` ticked, the notice's button pressed when `press`; returns what it showed. */
 async function adding(manifest, picks, press) {
   const { showQuickPick, showInformationMessage } = vscode.window;
-  const shown = { titles: [], notices: [] };
+  const shown = { titles: [], placeholders: [], notices: [] };
   vscode.window.showQuickPick = async (items, options) => {
     shown.titles.push(options.title);
+    shown.placeholders.push(options.placeHolder);
     assert.equal(options.canPickMany, true);
     return picks && items.filter((item) => picks.includes(item.name));
   };
@@ -45,6 +46,7 @@ exports.run = async function run(folder) {
 
     const shown = await adding(manifest, ["claude"], true);
     assert.deepEqual(shown.titles, ["Add assistant files"]);
+    assert.deepEqual(shown.placeholders, ["Choose one or more"]);
     assert.deepEqual(shown.notices, [
       ["Added the assistant files. The Ingestron output lists each one.", ["Open AGENTS.md"]],
     ]);

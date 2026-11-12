@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   assistantFlags,
   assistantItems,
+  addAssistantPlaceholder,
   assistantPlaceholder,
   newProjectTitle,
 } from "../src/features/assistants.js";
@@ -48,6 +49,13 @@ describe("the New project picker", () => {
   it("is optional, and says so", () => {
     expect(newProjectTitle).toBe("New project: AI assistant files (optional)");
     expect(assistantPlaceholder).toBe("Choose any, or press Enter for none");
+  });
+});
+
+describe("the Add assistant files picker", () => {
+  it("asks for one or more, as Enter with nothing ticked adds nothing", () => {
+    expect(addAssistantPlaceholder).toBe("Choose one or more");
+    expect(addAssistantPlaceholder).not.toBe(assistantPlaceholder);
   });
 });
 

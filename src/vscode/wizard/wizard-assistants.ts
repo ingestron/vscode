@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { run } from "@ingestron/cli";
 import * as vscode from "vscode";
 import {
+  addAssistantPlaceholder,
   addedMessage,
   assistantItems,
   assistantPlaceholder,
@@ -12,17 +13,20 @@ import {
 import type { ExtensionState } from "../state/index.js";
 
 /** The names ticked under `title`, none when Enter is pressed alone; undefined on Escape. */
-export async function chooseAssistants(title: string): Promise<string[] | undefined> {
+export async function chooseAssistants(
+  title: string,
+  placeHolder: string,
+): Promise<string[] | undefined> {
   const picked = await vscode.window.showQuickPick(
     assistantItems.map((item) => ({ label: item.label, name: item.name })),
-    { title, placeHolder: assistantPlaceholder, canPickMany: true },
+    { title, placeHolder, canPickMany: true },
   );
   return picked?.map((item) => item.name);
 }
 
 /** New project's step, after what to start from and before the folder. */
 export function chooseNewProjectAssistants(): Promise<string[] | undefined> {
-  return chooseAssistants(newProjectTitle);
+  return chooseAssistants(newProjectTitle, assistantPlaceholder);
 }
 
 /** Registers Add assistant files, for a project's menus and the Command Palette. */
@@ -46,7 +50,7 @@ async function addAssistantFiles(
 ): Promise<void> {
   const here = state.hereFor(uri);
   if (!here) return void vscode.window.showWarningMessage("Open a file of an Ingestron project.");
-  const names = await chooseAssistants("Add assistant files");
+  const names = await chooseAssistants("Add assistant files", addAssistantPlaceholder);
   if (!names || names.length === 0) return;
   const folder = here.project.folder;
   output.clear();

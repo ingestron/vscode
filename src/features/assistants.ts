@@ -19,6 +19,9 @@ export const newProjectTitle = "New project: AI assistant files (optional)";
 /** The picker's placeholder: Enter with nothing ticked is an answer. */
 export const assistantPlaceholder = "Choose any, or press Enter for none";
 
+/** The placeholder of Add assistant files' picker: there is no Enter for none, as nothing ticked adds nothing. */
+export const addAssistantPlaceholder = "Choose one or more";
+
 /** init's flag for the chosen names; none for an empty choice. */
 export function assistantFlags(names: readonly string[]): string[] {
   return names.length === 0 ? [] : ["--assistant", names.join(",")];
