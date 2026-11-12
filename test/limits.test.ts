@@ -8,6 +8,7 @@ describe("limits", () => {
       projectViewSettleMs: 150,
       contextKeysSettleMs: 200,
       yamlFilesPerProject: 5000,
+      sourceImportSettleMs: 500,
       projectsPerWorkspace: 1000,
     });
   });

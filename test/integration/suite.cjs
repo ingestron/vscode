@@ -188,6 +188,7 @@ exports.run = async function run() {
   await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
   await vscode.window.showTextDocument(document);
   await sourceMetadata(folder);
+  await sourceWatching(folder);
   await vscode.window.showTextDocument(document);
 
   const editor = vscode.window.activeTextEditor;
@@ -864,6 +865,180 @@ async function sourceMetadata(folder) {
   await vscode.commands.executeCommand("workbench.action.files.revert");
   await restore();
   fs.rmSync(sample);
+}
+
+/**
+ * A file saved under sources/ is imported straight away, once: sources/shop.yaml is written and
+ * saved, project.yaml gains its import line, a notice says what changed and the problems follow.
+ * The import's own writes start nothing; a refused file writes nothing and warns; a Parquet file
+ * is read as bytes; the nearest of two nested projects takes a file; project.yaml's unsaved
+ * typing survives.
+ */
+async function sourceWatching(folder) {
+  const manifest = path.join(folder, "project.yaml");
+  const written = path.join(folder, "sources", "shop.yaml");
+  const kept = fs.readFileSync(manifest, "utf8");
+  const dirty = () =>
+    vscode.workspace.textDocuments.filter((item) => item.isDirty).map((item) => item.uri.fsPath);
+  const notices = captureNotices();
+  const put = (file, contents) => {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, contents);
+  };
+  const reset = async () => {
+    fs.rmSync(path.join(folder, "sources"), { recursive: true, force: true });
+    fs.writeFileSync(manifest, kept);
+    await until(
+      () =>
+        vscode.workspace.textDocuments.every(
+          (item) => item.uri.fsPath !== manifest || (!item.isDirty && item.getText() === kept),
+        ),
+      "project.yaml to be as it was",
+    );
+    notices.clear();
+  };
+  const columns = path.join(folder, "sources", "shop", "orders.csv");
+  const before = vscode.languages
+    .getDiagnostics()
+    .flatMap(([, items]) => items.map(codeOf))
+    .filter((code) => code.startsWith("SOURCE_"));
+  assert.deepEqual(before, [], "no source problem before the import");
+  try {
+    // One save as an editor makes it: a create, then a change. One import, one notice.
+    put(
+      columns,
+      "id,customer_id,ordered_at,updated_at\n1,7,2026-10-01T09:00:00Z,2026-10-01T09:00:00Z\n",
+    );
+    await wait(100);
+    fs.appendFileSync(columns, "2,8,2026-10-02T09:00:00Z,2026-10-02T09:00:00Z\n");
+    await until(() => notices.info.length > 0, "the notice");
+    assert.ok(saved(written), "the source metadata of the saved file");
+    assert.match(fs.readFileSync(written, "utf8"), /kind: SourceMetadata/);
+    assert.match(fs.readFileSync(written, "utf8"), /object: orders/);
+    assert.match(fs.readFileSync(manifest, "utf8"), /- sources\/shop\.yaml/);
+    assert.match(notices.info[0], /sources\/shop\.yaml/);
+    await until(
+      () =>
+        vscode.languages
+          .getDiagnostics()
+          .some(([, items]) => items.some((item) => codeOf(item).startsWith("SOURCE_"))),
+      "the problems to follow the metadata",
+    );
+    // What the import wrote is not imported in turn, and the second write is not a second import.
+    const stamp = fs.statSync(written).mtimeMs;
+    await wait(2000);
+    assert.equal(notices.info.length, 1, "one notice for one save");
+    assert.equal(notices.warnings.length, 0);
+    assert.equal(fs.statSync(written).mtimeMs, stamp, "the metadata was written once");
+    assert.deepEqual(dirty(), [], "the import saved what it wrote");
+    await reset();
+
+    // A Parquet file is bytes, not text.
+    put(
+      path.join(folder, "sources", "shop", "orders.parquet"),
+      fs.readFileSync(path.join(__dirname, "orders.parquet")),
+    );
+    await until(() => notices.info.length > 0, "the notice of a Parquet file");
+    assert.ok(saved(written), "the metadata of a Parquet file");
+    assert.match(fs.readFileSync(written, "utf8"), /object: orders/);
+    assert.equal(notices.warnings.length, 0, notices.warnings.join("\n"));
+    await reset();
+
+    // A file that cannot be read writes nothing: one warning, no document, nothing unsaved.
+    put(path.join(folder, "sources", "shop", "empty.csv"), "");
+    await until(() => notices.warnings.length > 0, "the warning");
+    await wait(1500);
+    assert.equal(notices.warnings.length, 1);
+    assert.match(notices.warnings[0], /sources\/shop\/empty\.csv: Nothing was imported\./);
+    assert.equal(fs.existsSync(written), false);
+    assert.equal(fs.readFileSync(manifest, "utf8"), kept);
+    assert.deepEqual(dirty(), []);
+    await reset();
+
+    await nestedProject(folder, notices, put);
+    await withTypingInProject(folder, manifest, kept, written, columns, dirty, put, reset, notices);
+  } finally {
+    notices.restore();
+    fs.rmSync(path.join(folder, "sources"), { recursive: true, force: true });
+    fs.rmSync(path.join(folder, "inner"), { recursive: true, force: true });
+    fs.writeFileSync(manifest, kept);
+  }
+}
+
+/** True once the metadata document is on disk with its text (it is created empty, then filled and saved). */
+const saved = (file) =>
+  fs.existsSync(file) && /kind: SourceMetadata/.test(fs.readFileSync(file, "utf8"));
+
+/** A file under the inner project's sources/ goes to the inner project, not the one around it. */
+async function nestedProject(folder, notices, put) {
+  const inner = path.join(folder, "inner");
+  put(
+    path.join(inner, "project.yaml"),
+    "id: inner\nname: Inner\nimports:\n  - connections/*.yaml\n",
+  );
+  put(
+    path.join(inner, "connections", "lake.yaml"),
+    "apiVersion: ingestron.io/v1\nkind: Connection\nid: lake\nconnector: files\nconnectivity: public\nsettings:\n  path: abfss://landing@lakeaccount.dfs.core.windows.net/lake\n",
+  );
+  await wait(1000);
+  put(path.join(inner, "sources", "lake", "items.csv"), "id,name\n1,Pen\n");
+  const document = path.join(inner, "sources", "lake.yaml");
+  await until(() => notices.info.length > 0, "the notice of the inner project");
+  assert.ok(saved(document), "the inner project's metadata");
+  assert.match(fs.readFileSync(path.join(inner, "project.yaml"), "utf8"), /- sources\/lake\.yaml/);
+  assert.equal(fs.existsSync(path.join(folder, "sources")), false, "nothing for the outer project");
+  fs.rmSync(inner, { recursive: true, force: true });
+  notices.clear();
+}
+
+/** project.yaml is open with typing that is not saved: the import line joins it and nothing is lost. */
+async function withTypingInProject(
+  folder,
+  manifest,
+  kept,
+  written,
+  columns,
+  dirty,
+  put,
+  reset,
+  notices,
+) {
+  const editor = await vscode.window.showTextDocument(vscode.Uri.file(manifest));
+  await editor.edit((edit) => edit.insert(new vscode.Position(0, 0), "# typed, not saved\n"));
+  put(columns, "id,customer_id\n1,7\n");
+  await until(() => notices.info.length > 0, "the notice, with project.yaml open");
+  assert.match(
+    editor.document.getText(),
+    /- sources\/shop\.yaml/,
+    "the import line is in the open text",
+  );
+  assert.match(editor.document.getText(), /^# typed, not saved\n/, "the typing stays");
+  assert.equal(editor.document.isDirty, true, "project.yaml is left unsaved");
+  assert.equal(fs.readFileSync(manifest, "utf8"), kept, "nothing of it reached the disk");
+  assert.deepEqual(dirty(), [manifest], "only project.yaml is unsaved");
+  assert.match(fs.readFileSync(written, "utf8"), /kind: SourceMetadata/);
+  await vscode.commands.executeCommand("workbench.action.files.revert");
+  await reset();
+}
+
+/** Records the notices the extension shows instead of showing them; `restore` puts VS Code's back. */
+function captureNotices() {
+  const { showInformationMessage, showWarningMessage } = vscode.window;
+  const notices = {
+    info: [],
+    warnings: [],
+    clear() {
+      notices.info.length = 0;
+      notices.warnings.length = 0;
+    },
+    restore() {
+      vscode.window.showInformationMessage = showInformationMessage;
+      vscode.window.showWarningMessage = showWarningMessage;
+    },
+  };
+  vscode.window.showInformationMessage = async (message) => void notices.info.push(message);
+  vscode.window.showWarningMessage = async (message) => void notices.warnings.push(message);
+  return notices;
 }
 
 /** Runs Import source metadata… with `dialog` as the open dialog; returns the prompts for the table. */

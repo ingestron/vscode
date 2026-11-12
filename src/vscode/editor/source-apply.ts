@@ -2,7 +2,12 @@
 import { join } from "node:path";
 import * as vscode from "vscode";
 import type { SourceImportEdit } from "@ingestron/authoring";
-import type { ImportFailure } from "../../features/source-import.js";
+import {
+  importFailureNotice,
+  importNotice,
+  showChanges,
+  type ImportFailure,
+} from "../../features/source-import.js";
 
 /** A file the import changes, and whether to save it afterwards. */
 interface Change {
@@ -34,6 +39,24 @@ export async function applyImport(
     if (save && document.isDirty && !(await document.save())) return { file, step: "save" };
   }
   return undefined;
+}
+
+/**
+ * Writes an import (see `applyImport`) and tells the person what changed, with a button that
+ * shows every change through `show`; or that it could not be finished. Done when the files are
+ * written, not when the message is closed.
+ */
+export async function reportImport(
+  imported: SourceImportEdit,
+  folder: string,
+  show: (summary: string) => Thenable<unknown>,
+): Promise<void> {
+  const failure = await applyImport(imported, folder);
+  if (failure) return void vscode.window.showWarningMessage(importFailureNotice(failure));
+  const { message, buttons } = importNotice(imported);
+  void vscode.window.showInformationMessage(message, ...buttons).then((pressed) => {
+    if (pressed === showChanges) return show(imported.summary);
+  });
 }
 
 /** Adds the file's new text to `edit`; undefined, adding nothing, when the file already holds it. */

@@ -1,6 +1,8 @@
 // What the source metadata commands say to the person: the notification after an import, the
 // warning when an import stops, and which refusal is answered by asking for the table's name.
 // The import itself is `ProjectSnapshot.importSource`; nothing here decides what to import.
+// Also which file events import straight away, and how events for one file are grouped.
+import { inProject } from "@ingestron/authoring";
 
 /** The refusal of a file that does not say which table it describes. */
 const needsObjectReason = "Name the table this file describes with --object.";
@@ -85,4 +87,59 @@ export function importFailureNotice({ file, step }: ImportFailure): string {
   return step === "write"
     ? `Could not write ${file}.`
     : `Wrote the import, but could not save ${file}.`;
+}
+
+/**
+ * True when a file event is for a file saved where the source request says: under `sources/` in
+ * the project at `projectFolder` (the nearest project, so a file of a nested project is not its
+ * outer project's), named by `sourceFileAt` (which is never the metadata document), and not a
+ * hidden file such as an editor's swap file. project.yaml and everything outside `sources/` is
+ * false, so what an import writes never starts another.
+ */
+export function shouldImport(
+  event: { path: string; projectFolder: string },
+  sourceFileAt: (file: string) => unknown,
+): boolean {
+  const inside = inProject(event.projectFolder, event.path);
+  if (inside === undefined || !inside.startsWith("sources/")) return false;
+  if (inside.split("/").some((part) => part.startsWith("."))) return false;
+  return sourceFileAt(event.path) !== undefined;
+}
+
+/**
+ * Groups events: `run(key)` is called once, `delayMs` after the last `push(key)` for that key.
+ * `dispose` drops what is waiting.
+ */
+export function grouped(
+  delayMs: number,
+  run: (key: string) => void,
+): { push: (key: string) => void; dispose: () => void } {
+  const timers = new Map<string, ReturnType<typeof setTimeout>>();
+  return {
+    push(key) {
+      clearTimeout(timers.get(key));
+      timers.set(
+        key,
+        setTimeout(() => {
+          timers.delete(key);
+          run(key);
+        }, delayMs),
+      );
+    },
+    dispose() {
+      for (const timer of timers.values()) clearTimeout(timer);
+      timers.clear();
+    },
+  };
+}
+
+/**
+ * The warning for a saved file the import stopped for, naming the file. A save cannot ask for the
+ * table's name as the command does, so it says where to save a file of one table.
+ */
+export function watchRefusalNotice(file: string, refused: readonly string[]): string {
+  const hint = needsObject(refused)
+    ? " Save it as sources/<connection>/<table> or use Import source metadata…."
+    : "";
+  return `${file}: ${refusalNotice(refused)}${hint}`;
 }

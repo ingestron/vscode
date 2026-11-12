@@ -6,15 +6,12 @@ import * as vscode from "vscode";
 import type { ProjectSnapshot, SourceImportEdit } from "@ingestron/authoring";
 import {
   connectionChoice,
-  importFailureNotice,
-  importNotice,
   needsObject,
   noConnectionNotice,
   refusalNotice,
   requestChoices,
-  showChanges,
 } from "../../features/source-import.js";
-import { applyImport } from "../editor/index.js";
+import { reportImport } from "../editor/index.js";
 import type { ExtensionState, Here } from "../state/index.js";
 import { showMarkdown } from "./markdown.js";
 
@@ -156,12 +153,5 @@ async function finish(
 ): Promise<void> {
   if ("refused" in result)
     return void vscode.window.showWarningMessage(refusalNotice(result.refused));
-  const imported = result;
-  const failure = await applyImport(imported, folder);
-  if (failure) return void vscode.window.showWarningMessage(importFailureNotice(failure));
-  const { message, buttons } = importNotice(imported);
-  // Not awaited: the command is done when the files are written, not when the message is closed.
-  void vscode.window.showInformationMessage(message, ...buttons).then((pressed) => {
-    if (pressed === showChanges) return showMarkdown(imported.summary);
-  });
+  await reportImport(result, folder, showMarkdown);
 }
