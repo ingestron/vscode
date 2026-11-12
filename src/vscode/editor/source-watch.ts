@@ -57,8 +57,8 @@ function failed(state: ExtensionState, uri: vscode.Uri, error: unknown): void {
 }
 
 /**
- * Imports one saved file: the bytes on disk, as the project is now. Nothing for a folder or a
- * gone file; a warning, and no read, for a file over the limit.
+ * Imports one saved file: the bytes on disk, as the project is once they are read. Nothing for a
+ * folder or a gone file; a warning, and no read, for a file over the limit.
  */
 async function importSaved(
   state: ExtensionState,
@@ -66,23 +66,25 @@ async function importSaved(
   show: (summary: string) => Thenable<unknown>,
 ): Promise<void> {
   const size = await sizeOf(uri);
-  if (size === undefined) return;
-  // The project is read afresh: the import before this one changed its files.
+  const found = size === undefined ? undefined : state.projectAt(uri);
+  if (size === undefined || !found || !importable(found, uri)) return;
+  if (tooLarge(size, limits.sourceImportBytes))
+    return void vscode.window.showWarningMessage(
+      oversizeNotice(found.file, limits.sourceImportBytes),
+    );
+  const contents = await vscode.workspace.fs.readFile(uri);
+  // The project is read afresh, after the file: the import before this one changed its files,
+  // and the person may have changed them while the file was read.
   state.forget(uri.fsPath);
   const here = state.projectAt(uri);
   if (!here || !importable(here, uri)) return;
-  if (tooLarge(size, limits.sourceImportBytes))
-    return void vscode.window.showWarningMessage(
-      oversizeNotice(here.file, limits.sourceImportBytes),
-    );
-  const contents = await vscode.workspace.fs.readFile(uri);
   const environment = state.environmentOf(here.project);
   const result = here.project.importSource(uri.fsPath, contents, {
     ...(environment && { environment }),
     at: new Date().toISOString(),
   });
   if ("refused" in result)
-    return void vscode.window.showWarningMessage(watchRefusalNotice(here.file, result.refused));
+    return void vscode.window.showWarningMessage(watchRefusalNotice(here.file, result));
   await reportImport(result, here.project.folder, show);
 }
 

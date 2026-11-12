@@ -809,7 +809,7 @@ async function moveToStandard(flow, document) {
  * Request source metadata opens the request for the one connection. Import source metadata…
  * reads a sample saved outside sources/, asks for its table once, and writes sources/shop.yaml
  * and project.yaml's import line: both saved when project.yaml had no unsaved changes, and
- * only sources/shop.yaml when it had (its own typing stays unsaved).
+ * only sources/shop.yaml when it had (its own typing stays unsaved). One undo reverts both.
  */
 async function sourceMetadata(folder) {
   await vscode.commands.executeCommand("ingestron.requestSourceMetadata");
@@ -849,6 +849,7 @@ async function sourceMetadata(folder) {
   assert.match(fs.readFileSync(written, "utf8"), /object: returns/);
   assert.match(fs.readFileSync(manifest, "utf8"), /- sources\/shop\.yaml/);
   assert.deepEqual(dirty(), [], "the import saved what it wrote");
+  await undoneImport(manifest, kept, written);
   await restore();
 
   // From the project's folder the dialog picks it. project.yaml has typing that is not saved.
@@ -865,6 +866,25 @@ async function sourceMetadata(folder) {
   await vscode.commands.executeCommand("workbench.action.files.revert");
   await restore();
   fs.rmSync(sample);
+}
+
+/**
+ * One undo in project.yaml reverts the whole import: its import line goes and the metadata
+ * document it created is deleted. Saving then puts project.yaml on disk as it was. The undo
+ * command acts only in a window that has the focus, which a window opened in the background does
+ * not get (macOS keeps it behind the app in front), so there the step says so and is left out.
+ */
+async function undoneImport(manifest, kept, written) {
+  if (!vscode.window.state.focused)
+    return void console.log("Undoing an import is not tested: the window does not have the focus.");
+  const editor = await vscode.window.showTextDocument(vscode.Uri.file(manifest));
+  await vscode.commands.executeCommand("undo");
+  await until(
+    () => editor.document.getText() === kept && !fs.existsSync(written),
+    "project.yaml and sources/shop.yaml as they were before the import",
+  );
+  await editor.document.save();
+  assert.equal(fs.readFileSync(manifest, "utf8"), kept);
 }
 
 /**

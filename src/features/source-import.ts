@@ -1,14 +1,14 @@
-// What the source metadata commands say to the person: the notification after an import, the
-// warning when an import stops, and which refusal is answered by asking for the table's name.
-// The import itself is `ProjectSnapshot.importSource`; nothing here decides what to import.
+// What the source metadata commands say to the person: the notification after an import and the
+// warning when an import stops. The import itself is `ProjectSnapshot.importSource`, which also
+// says when a refusal is answered by asking for the table's name; nothing here decides that.
 // Also which file events import straight away, and how events for one file are grouped.
 import { inProject } from "@ingestron/authoring";
 
-/** The refusal of a file that does not say which table it describes. */
-const needsObjectReason = "Name the table this file describes with --object.";
-
 /** The button that opens every change of an import. */
 export const showChanges = "Show all changes";
+
+/** The import command as every notice names it: its title, quoted. */
+const importCommand = '"Import source metadata…"';
 
 /**
  * What to tell the person after an import: the first line of its changes, then how many are
@@ -24,11 +24,6 @@ export function importNotice(edit: { summary: string; breaking: number }): {
     message: edit.breaking > 0 ? `${first} ${edit.breaking} breaking.` : first!,
     buttons: rest.some((line) => line.trim() !== "") ? [showChanges] : [],
   };
-}
-
-/** True when the import stopped only for want of the table the file describes. */
-export function needsObject(refused: readonly string[]): boolean {
-  return refused.length === 1 && refused[0] === needsObjectReason;
 }
 
 /** The warning for an import that stopped: nothing was written, and each reason. */
@@ -137,11 +132,15 @@ export function grouped(
 
 /**
  * The warning for a saved file the import stopped for, naming the file. A save cannot ask for the
- * table's name as the command does, so it says where to save a file of one table.
+ * table's name as the command does, so when the import needs it (`needsObject`) it says where to
+ * save a file of one table.
  */
-export function watchRefusalNotice(file: string, refused: readonly string[]): string {
-  const hint = needsObject(refused)
-    ? " Save it as sources/<connection>/<table> or use Import source metadata…"
+export function watchRefusalNotice(
+  file: string,
+  { refused, needsObject }: { refused: readonly string[]; needsObject?: true },
+): string {
+  const hint = needsObject
+    ? ` Save it as sources/<connection>/<table> or use ${importCommand}.`
     : "";
   return `${file}: ${refusalNotice(refused)}${hint}`;
 }
@@ -156,13 +155,19 @@ export function oversizeNotice(file: string, limit: number): string {
   const megabytes = Math.round(limit / (1024 * 1024));
   return (
     `${file} is over ${megabytes} MB, so it was not imported when saved. ` +
-    'Use "Import source metadata…" or ingestron source import.'
+    `Use ${importCommand} or ingestron source import.`
   );
 }
 
-/** The warning for a saved file that could not be imported: the reason, never the file's content. */
+/**
+ * The warning for a file that could not be imported: the reason, never the file's content. An
+ * error of the file system (it has a `code`, such as `FileNotFound` or `EACCES`) gives its code
+ * alone, as its message can hold the file's absolute path.
+ */
 export function failedNotice(file: string, error: unknown): string {
-  return error instanceof Error
-    ? `Could not import ${file}: ${error.message}`
-    : `Could not import ${file}.`;
+  if (!(error instanceof Error)) return `Could not import ${file}.`;
+  const code = (error as { code?: unknown }).code;
+  return typeof code === "string" && code !== ""
+    ? `Could not import ${file}: ${code}.`
+    : `Could not import ${file}: ${error.message}`;
 }

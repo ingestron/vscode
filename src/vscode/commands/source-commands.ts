@@ -2,11 +2,17 @@
 // the source's catalogue, and the file they send back, read into sources/<connection>.yaml.
 // What to ask for and what a file means are decided by ProjectSnapshot (core's rules); this
 // asks the person for the choices and shows the result.
+import { basename, join } from "node:path";
 import * as vscode from "vscode";
-import type { ProjectSnapshot, SourceImportEdit } from "@ingestron/authoring";
+import {
+  inProject,
+  type ProjectSnapshot,
+  type SourceImportEdit,
+  type SourceImportRefusal,
+} from "@ingestron/authoring";
 import {
   connectionChoice,
-  needsObject,
+  failedNotice,
   noConnectionNotice,
   refusalNotice,
   requestChoices,
@@ -73,11 +79,34 @@ async function importSourceMetadata(state: ExtensionState, uri?: vscode.Uri): Pr
     ...optionalEnvironment(state.environmentHere(here)),
     at: new Date().toISOString(),
   };
-  const result = await importFile(here.project, file, options);
-  if (result) await queued(() => finish(result, here.project.folder));
+  await queued(() => importQueued(state, here.project.folder, file, options));
 }
 
 type ImportOptions = Parameters<ProjectSnapshot["importSource"]>[2];
+
+/**
+ * Imports the file into the project at `folder` as it is when the import's turn comes (one queued
+ * before may have changed it), and tells the person what changed; or why it could not, without
+ * stopping the queue.
+ */
+async function importQueued(
+  state: ExtensionState,
+  folder: string,
+  file: vscode.Uri,
+  options: ImportOptions,
+): Promise<void> {
+  const manifest = join(folder, "project.yaml");
+  try {
+    state.forget(manifest);
+    const here = state.projectAt(vscode.Uri.file(manifest));
+    const result = here && (await importFile(here.project, file, options));
+    if (result) await finish(result, folder);
+  } catch (error) {
+    console.error("ingestron: a file could not be imported", error);
+    const name = inProject(folder, file.fsPath) ?? basename(file.fsPath);
+    void vscode.window.showWarningMessage(failedNotice(name, error));
+  }
+}
 
 /**
  * Imports the file; when it stops for want of the table it describes, asks for the table once and
@@ -90,7 +119,7 @@ async function importFile(
 ): Promise<ReturnType<ProjectSnapshot["importSource"]> | undefined> {
   const contents = await vscode.workspace.fs.readFile(file);
   const result = project.importSource(file.fsPath, contents, options);
-  if (!("refused" in result) || !needsObject(result.refused)) return result;
+  if (!("refused" in result) || !result.needsObject) return result;
   const object = await vscode.window.showInputBox({
     prompt: "The table this file describes, such as ERP.dbo.Customers",
     validateInput: (value) => (value.trim() === "" ? "Give the table's name." : undefined),
@@ -148,7 +177,7 @@ async function connectionFor(here: Here, file: vscode.Uri): Promise<string | und
 
 /** Tells the person why an import stopped, or writes it and tells them what changed. */
 async function finish(
-  result: SourceImportEdit | { refused: string[] },
+  result: SourceImportEdit | SourceImportRefusal,
   folder: string,
 ): Promise<void> {
   if ("refused" in result)

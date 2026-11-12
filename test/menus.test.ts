@@ -43,7 +43,7 @@ describe("Explorer menu", () => {
     });
   });
 
-  it("offers Import source metadata on a project folder, and on any file once a project is open", () => {
+  it("offers Import source metadata on a project folder, and on any file but a project's own once a project is open", () => {
     const entries = menus["explorer/context"]!.filter(
       (entry) => entry.command === "ingestron.importSourceMetadata",
     );
@@ -55,7 +55,7 @@ describe("Explorer menu", () => {
       },
       {
         command: "ingestron.importSourceMetadata",
-        when: "!explorerResourceIsFolder && ingestron.hasProjects",
+        when: "!explorerResourceIsFolder && ingestron.hasProjects && !(resourcePath in ingestron.projectFiles)",
         group: "ingestron@7",
       },
     ]);
@@ -92,6 +92,10 @@ describe("editor title menu", () => {
     }
   });
 
+  it("leaves Import source metadata out: a command run from the title would take the open file as the sample", () => {
+    expect(named("editor/title", "ingestron.importSourceMetadata")).toBeUndefined();
+  });
+
   it("puts the other commands in the overflow menu, only in a project", () => {
     for (const command of [
       "ingestron.check",
@@ -112,12 +116,6 @@ describe("source metadata commands", () => {
       (commands as { command: string; title: string }[]).find((item) => item.command === id)?.title;
     expect(title("ingestron.requestSourceMetadata")).toBe("Request source metadata");
     expect(title("ingestron.importSourceMetadata")).toBe("Import source metadata…");
-  });
-});
-
-describe("editor title menu and Import source metadata", () => {
-  it("leaves the import out: a command run from the title would take the open file as the sample", () => {
-    expect(named("editor/title", "ingestron.importSourceMetadata")).toBeUndefined();
   });
 });
 

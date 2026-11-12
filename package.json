@@ -199,7 +199,7 @@
         },
         {
           "command": "ingestron.importSourceMetadata",
-          "when": "!explorerResourceIsFolder && ingestron.hasProjects",
+          "when": "!explorerResourceIsFolder && ingestron.hasProjects && !(resourcePath in ingestron.projectFiles)",
           "group": "ingestron@7"
         },
         {

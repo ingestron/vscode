@@ -111,20 +111,29 @@ describe("grouped", () => {
 
 describe("watchRefusalNotice", () => {
   it("names the file and the reasons, and says nothing was imported", () => {
-    expect(watchRefusalNotice("sources/erp/Orders.csv", ["Orders.csv has no columns."])).toBe(
-      "sources/erp/Orders.csv: Nothing was imported. Orders.csv has no columns.",
+    expect(
+      watchRefusalNotice("sources/erp/Orders.csv", { refused: ["Orders.csv has no columns."] }),
+    ).toBe("sources/erp/Orders.csv: Nothing was imported. Orders.csv has no columns.");
+  });
+
+  it("tells where to save a file of one table when the import needs its name", () => {
+    expect(
+      watchRefusalNotice("sources/erp.catalog.csv", {
+        refused: ["Name the table this file describes with --object."],
+        needsObject: true,
+      }),
+    ).toBe(
+      "sources/erp.catalog.csv: Nothing was imported. Name the table this file describes. " +
+        'Save it as sources/<connection>/<table> or use "Import source metadata…".',
     );
   });
 
-  it("tells where to save a file of one table, as a save cannot ask for the name", () => {
+  it("goes by the import's needsObject, not by the reason's words", () => {
     expect(
-      watchRefusalNotice("sources/erp.catalog.csv", [
-        "Name the table this file describes with --object.",
-      ]),
-    ).toBe(
-      "sources/erp.catalog.csv: Nothing was imported. Name the table this file describes. " +
-        "Save it as sources/<connection>/<table> or use Import source metadata…",
-    );
+      watchRefusalNotice("sources/erp.catalog.csv", {
+        refused: ["Name the table this file describes with --object."],
+      }),
+    ).not.toContain("Save it as");
   });
 });
 
@@ -152,6 +161,24 @@ describe("failedNotice", () => {
     expect(failedNotice("sources/erp/Orders.csv", new Error("disk is full"))).toBe(
       "Could not import sources/erp/Orders.csv: disk is full",
     );
+  });
+
+  it("gives a file system error's code, not its message, which can hold an absolute path", () => {
+    const denied = Object.assign(
+      new Error("EACCES: permission denied, open '/home/someone/a.csv'"),
+      {
+        code: "EACCES",
+      },
+    );
+    expect(failedNotice("sources/erp/Orders.csv", denied)).toBe(
+      "Could not import sources/erp/Orders.csv: EACCES.",
+    );
+    class FileSystemError extends Error {
+      readonly code = "FileNotFound";
+    }
+    expect(
+      failedNotice("returns.csv", new FileSystemError("file:///home/someone/returns.csv")),
+    ).toBe("Could not import returns.csv: FileNotFound.");
   });
 
   it("copes with a reason that is not an error", () => {

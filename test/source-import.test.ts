@@ -1,11 +1,10 @@
-// What the source metadata commands say: the notification after an import, the warning when
-// an import stops, and which refusal asks for the table's name.
+// What the source metadata commands say: the notification after an import and the warning when
+// an import stops.
 import { describe, expect, it } from "vitest";
 import {
   connectionChoice,
   importFailureNotice,
   importNotice,
-  needsObject,
   refusalNotice,
   requestChoices,
 } from "../src/features/source-import.js";
@@ -45,14 +44,6 @@ describe("importNotice", () => {
   it("offers the button for a note of the readers, even with no change", () => {
     const withNote = "sources/erp.yaml: no changes.\nA note about the file.\n";
     expect(importNotice({ summary: withNote, breaking: 0 }).buttons).toEqual(["Show all changes"]);
-  });
-});
-
-describe("needsObject", () => {
-  it("is true only for the refusal that asks for the table", () => {
-    expect(needsObject(["Name the table this file describes with --object."])).toBe(true);
-    expect(needsObject(["sources/x.csv has no columns."])).toBe(false);
-    expect(needsObject([])).toBe(false);
   });
 });
 
