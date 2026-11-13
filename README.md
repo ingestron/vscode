@@ -57,8 +57,8 @@ the columns and types of its tables as a file.
   when the file's place in the project does not say, and which table when the
   file does not say.
 - **Import on save:** a file you save or create under a project's `sources/`
-  folder is imported straight away. Several files imported together give one
-  notice that says how many tables changed.
+  folder is imported once the save settles. Several files imported together
+  give one notice that says how many tables changed.
 
 ## Add a guide for coding assistants
 
