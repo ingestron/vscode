@@ -354,14 +354,14 @@
     "dco:check": "node scripts/check-dco.mjs"
   },
   "dependencies": {
-    "@ingestron/authoring": "^2.3.1",
-    "@ingestron/cli": "^2.3.1",
+    "@ingestron/authoring": "^2.4.0",
+    "@ingestron/cli": "^2.4.0",
     "@ingestron/config": "^1.7.0",
-    "@ingestron/core": "^1.1.1",
-    "@ingestron/definitions": "^1.13.0",
+    "@ingestron/core": "^1.2.0",
+    "@ingestron/definitions": "^1.14.0",
     "@ingestron/generate": "^1.1.0",
-    "@ingestron/pack-adf": "^2.3.0",
-    "@ingestron/pack-databricks": "^2.3.0",
+    "@ingestron/pack-adf": "^2.4.0",
+    "@ingestron/pack-databricks": "^2.4.0",
     "yaml": "2.9.1"
   },
   "devDependencies": {

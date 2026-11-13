@@ -36,13 +36,10 @@ writeFileSync(join(root, "THIRD_PARTY_NOTICES"), thirdPartyNotices(metafile, roo
 // The data folders come from the packages @ingestron/core itself resolves, the
 // same versions the bundle's code comes from, not whatever the extension lists.
 const core = realpathSync(join(root, "node_modules/@ingestron/core"));
-// Beside core in a pnpm install; else among the extension's own packages, which is where a
-// workspace link to core finds the packages that are not next to it.
+// Beside core, where a pnpm install puts the packages core depends on.
 const installed = (path) => {
-  const found = [join(dirname(core), path), join(root, "node_modules/@ingestron", path)].find(
-    (folder) => existsSync(folder),
-  );
-  if (!found) throw new Error(`No installed copy of ${path}`);
+  const found = join(dirname(core), path);
+  if (!existsSync(found)) throw new Error(`No installed copy of ${path}`);
   return found;
 };
 const notGenerated = (path) => !/\/(build|\.generated\.json)(\/|$)/.test(path);
