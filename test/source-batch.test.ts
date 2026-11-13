@@ -1,7 +1,8 @@
 // What is told after imports: a file that could not be read, and the imports of one drain of the
 // queue as one notice.
 import { describe, expect, it } from "vitest";
-import { batchNotices, readFailureNotice, type BatchEntry } from "../src/features/source-import.js";
+import { batchNotices, type BatchEntry } from "../src/features/source-batch.js";
+import { readFailureNotice } from "../src/features/source-import.js";
 
 describe("readFailureNotice", () => {
   it("says which file could not be read and why: the code of a file system error", () => {

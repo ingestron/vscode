@@ -893,8 +893,8 @@ async function undoneImport(manifest, kept, written) {
  * A file saved under sources/ is imported straight away, once: sources/shop.yaml is written and
  * saved, project.yaml gains its import line, a notice says what changed and the problems follow.
  * The import's own writes start nothing; a refused file writes nothing and warns; a Parquet file
- * is read as bytes; five files at once give one notice; the nearest of two nested projects takes a file; project.yaml's unsaved
- * typing survives.
+ * is read as bytes; five files at once give one notice; the nearest of two nested projects takes
+ * a file; project.yaml's unsaved typing survives.
  */
 async function sourceWatching(folder) {
   const manifest = path.join(folder, "project.yaml");

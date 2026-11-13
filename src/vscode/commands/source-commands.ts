@@ -17,7 +17,7 @@ import {
   refusalNotice,
   requestChoices,
 } from "../../features/source-import.js";
-import { queued, reportImport, reportRefusal } from "../editor/index.js";
+import { queued, reportImport, reportRefusal, tellRecorded } from "../editor/index.js";
 import type { ExtensionState, Here } from "../state/index.js";
 import { showMarkdown } from "./markdown.js";
 
@@ -120,6 +120,8 @@ async function importFile(
   const contents = await vscode.workspace.fs.readFile(file);
   const result = project.importSource(file.fsPath, contents, options);
   if (!("refused" in result) || !result.needsObject) return result;
+  // The queue waits on the person here: what finished before is told first.
+  tellRecorded();
   const object = await vscode.window.showInputBox({
     prompt: "The table this file describes, such as ERP.dbo.Customers",
     validateInput: (value) => (value.trim() === "" ? "Give the table's name." : undefined),

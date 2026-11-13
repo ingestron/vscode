@@ -1,7 +1,7 @@
 // The import queue runs one import at a time, and nothing once the extension has stopped: an
 // import still waiting then does nothing.
 import { describe, expect, it, vi } from "vitest";
-import { idle, queued, registerImportQueue, onEmpty } from "../src/vscode/editor/source-queue.js";
+import { idle, onEmpty, queued, registerImportQueue } from "../src/vscode/editor/source-queue.js";
 
 /** Starts the queue as the extension does; gives what stops it. */
 function start(): () => void {
@@ -54,13 +54,16 @@ describe("onEmpty", () => {
     const stop = start();
     const told = vi.fn();
     onEmpty(told);
-    const first = gate();
-    const tasks = [queued(() => first.done), queued(async () => {}), queued(async () => {})];
+    const [first, last] = [gate(), gate()];
+    const tasks = [queued(() => first.done), queued(() => last.done)];
     expect(idle()).toBe(false);
     first.release();
-    await Promise.all(tasks);
-    await queued(async () => {});
-    expect(told).toHaveBeenCalledTimes(2);
+    await tasks[0];
+    expect(told).not.toHaveBeenCalled();
+    expect(idle()).toBe(false);
+    last.release();
+    await tasks[1];
+    expect(told).toHaveBeenCalledTimes(1);
     expect(idle()).toBe(true);
     stop();
   });

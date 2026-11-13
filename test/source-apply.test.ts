@@ -67,7 +67,12 @@ vi.mock("vscode", () => {
   };
 });
 import type * as vscode from "vscode";
-import { applyImport, reportImport, reportRefusal } from "../src/vscode/editor/source-apply.js";
+import {
+  applyImport,
+  reportImport,
+  reportRefusal,
+  tellRecorded,
+} from "../src/vscode/editor/source-apply.js";
 import { queued, registerImportQueue } from "../src/vscode/editor/source-queue.js";
 
 const folder = "/work/shop";
@@ -115,6 +120,20 @@ describe("one notice per batch of imports", () => {
     expect(shown[0]).toBe(
       names.map((name) => `## ${name}\n\n\`\`\`text\n${changes.trimEnd()}\n\`\`\`\n`).join("\n"),
     );
+  });
+
+  it("tells what is recorded before a task waits on the person, not when the queue empties", async () => {
+    let release = () => {};
+    const answer = new Promise<void>((resolve) => (release = resolve));
+    const waiting = queued(async () => {
+      await reportImport(edit(changes), "sources/erp/A.csv", folder, show);
+      tellRecorded();
+      await answer;
+    });
+    await vi.waitFor(() => expect(host.information).toHaveLength(1));
+    release();
+    await waiting;
+    expect(host.information).toHaveLength(1);
   });
 
   it("tells imports that are not queued together as separate notices", async () => {

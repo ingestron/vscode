@@ -2,12 +2,8 @@
 import { join } from "node:path";
 import * as vscode from "vscode";
 import type { SourceImportEdit } from "@ingestron/authoring";
-import {
-  batchNotices,
-  importFailureNotice,
-  type BatchEntry,
-  type ImportFailure,
-} from "../../features/source-import.js";
+import { batchNotices, type BatchEntry } from "../../features/source-batch.js";
+import { importFailureNotice, type ImportFailure } from "../../features/source-import.js";
 import { idle, onEmpty } from "./source-queue.js";
 
 /** A file the import changes, and whether to save it afterwards. */
@@ -43,7 +39,7 @@ export async function applyImport(
 /** What the imports of one drain of the queue gave, told when the queue is empty. */
 let entries: BatchEntry[] = [];
 let showText: ((text: string) => Thenable<unknown>) | undefined;
-onEmpty(flush);
+onEmpty(tellRecorded);
 
 /**
  * Writes an import (see `applyImport`) of `file` (relative to the project) and records what
@@ -79,11 +75,15 @@ function record(entry: BatchEntry, show: (text: string) => Thenable<unknown>): v
   entries.push(entry);
   showText ??= show;
   // Outside the queue nothing is draining, so nothing would tell it.
-  if (idle()) flush();
+  if (idle()) tellRecorded();
 }
 
-/** Tells the person what the recorded imports gave, as one notice of each kind. */
-function flush(): void {
+/**
+ * Tells the person now what the recorded imports gave, as one notice of each kind. For a task
+ * that is about to wait on the person, so what finished before it is not held back by the wait;
+ * what finishes after it is told as another batch.
+ */
+export function tellRecorded(): void {
   const done = entries;
   const show = showText;
   entries = [];
