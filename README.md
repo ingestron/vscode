@@ -47,11 +47,18 @@ the editor.
 Ingestron never connects to your sources, so someone who can reach one sends
 the columns and types of its tables as a file.
 
-- **Request source metadata** writes what to ask for, filled in for your
-  project: who to ask, the query or call to run and where to save the result.
-- **Import source metadata** reads the file they send into
+- **Request source metadata** opens what to ask for as a Markdown document to
+  send, filled in for your project: who to ask, the query or call to run and
+  where to save the result. Nothing is written to your project.
+- **Import source metadata…** reads the file they send into
   `sources/<connection>.yaml`, and tells you what changed. It keeps names and
-  types, never the values in a row.
+  types, never the values in a row. Run it from the Command Palette or the
+  Explorer's right-click menu. It asks which connection the file describes
+  when the file's place in the project does not say, and which table when the
+  file does not say.
+- **Import on save:** a file you save or create under a project's `sources/`
+  folder is imported straight away. Several files imported together give one
+  notice that says how many tables changed.
 
 ## Add a guide for coding assistants
 
