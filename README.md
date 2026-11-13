@@ -42,6 +42,23 @@ New project starts a project in one of three ways: from a connection, a
 starter or a published standard. The Project and Reference views sit beside
 the editor.
 
+## Know what a source holds
+
+Ingestron never connects to your sources, so someone who can reach one sends
+the columns and types of its tables as a file.
+
+- **Request source metadata** writes what to ask for, filled in for your
+  project: who to ask, the query or call to run and where to save the result.
+- **Import source metadata** reads the file they send into
+  `sources/<connection>.yaml`, and tells you what changed. It keeps names and
+  types, never the values in a row.
+
+## Add a guide for coding assistants
+
+**Add assistant files** writes `AGENTS.md`, a guide to your project for coding
+assistants, and a short file for each assistant that needs one. Plan and Apply
+keep it current, and leave a section you edited by hand.
+
 Documentation: [docs.ingestron.io](https://docs.ingestron.io/docs/tools/vscode).
 
 ## Install
