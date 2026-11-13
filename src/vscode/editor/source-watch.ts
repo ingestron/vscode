@@ -12,7 +12,7 @@ import {
 } from "../../features/source-import.js";
 import { limits } from "../../features/limits.js";
 import type { ExtensionState, Here } from "../state/index.js";
-import { reportImport } from "./source-apply.js";
+import { reportImport, reportRefusal } from "./source-apply.js";
 import { queued } from "./source-queue.js";
 
 /**
@@ -84,8 +84,8 @@ async function importSaved(
     at: new Date().toISOString(),
   });
   if ("refused" in result)
-    return void vscode.window.showWarningMessage(watchRefusalNotice(here.file, result));
-  await reportImport(result, here.project.folder, show);
+    return reportRefusal(here.file, watchRefusalNotice(here.file, result), result.refused, show);
+  await reportImport(result, here.file, here.project.folder, show);
 }
 
 /** The file's size in bytes; undefined for a folder or a file that is gone. */

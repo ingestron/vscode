@@ -22,6 +22,15 @@ const commands: { command: string; icon?: string }[] = manifest.contributes.comm
 const named = (menu: string, command: string) =>
   menus[menu]!.find((entry) => entry.command === command);
 
+describe("command titles", () => {
+  it("name the source metadata commands for what they do, with the import asking for a file", () => {
+    const title = (id: string) =>
+      (commands as { command: string; title: string }[]).find((item) => item.command === id)?.title;
+    expect(title("ingestron.requestSourceMetadata")).toBe("Request source metadata");
+    expect(title("ingestron.importSourceMetadata")).toBe("Import source metadata…");
+  });
+});
+
 describe("Explorer menu", () => {
   it("offers check, plan, apply, compare and the two requests on a project, in that order", () => {
     const order = [
@@ -107,15 +116,6 @@ describe("editor title menu", () => {
       expect(entry?.group, command).toMatch(/^ingestron@\d$/);
       expect(entry?.when, command).toBe(editorTitleWhen);
     }
-  });
-});
-
-describe("source metadata commands", () => {
-  it("are titled for what they do, with the import asking for a file", () => {
-    const title = (id: string) =>
-      (commands as { command: string; title: string }[]).find((item) => item.command === id)?.title;
-    expect(title("ingestron.requestSourceMetadata")).toBe("Request source metadata");
-    expect(title("ingestron.importSourceMetadata")).toBe("Import source metadata…");
   });
 });
 

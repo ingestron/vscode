@@ -26,11 +26,117 @@ export function importNotice(edit: { summary: string; breaking: number }): {
   };
 }
 
+/** The reasons an import stopped, as the editor says them: it has no --object option to name. */
+function editorReasons(refused: readonly string[]): string[] {
+  return refused.map((reason) => reason.replace(" with --object.", "."));
+}
+
 /** The warning for an import that stopped: nothing was written, and each reason. */
 export function refusalNotice(refused: readonly string[]): string {
-  // The editor asks for the table in a box; it has no --object option to name.
-  const reasons = refused.map((reason) => reason.replace(" with --object.", "."));
-  return ["Nothing was imported.", ...reasons].join(" ");
+  return ["Nothing was imported.", ...editorReasons(refused)].join(" ");
+}
+
+/** One import that finished, as a batch of imports sums it up: the file imported and its changes. */
+export interface ImportedEntry {
+  kind: "imported";
+  /** The file imported, relative to the project. */
+  file: string;
+  /** The changes as the import gives them: their first line, then the rest. */
+  summary: string;
+  breaking: number;
+}
+
+/** One import that stopped: the warning a lone refusal gives (naming its file), and each reason. */
+export interface RefusedEntry {
+  kind: "refused";
+  file: string;
+  message: string;
+  refused: readonly string[];
+}
+
+/** What an import gave. */
+export type BatchEntry = ImportedEntry | RefusedEntry;
+
+/** A notice for the person: what to say, and the button that opens `document` when there is one. */
+export interface BatchNotice {
+  level: "information" | "warning";
+  message: string;
+  button?: string;
+  document?: string;
+}
+
+/** The button that opens the reasons of several refusals. */
+export const showReasons = "Show reasons";
+
+/** How many tables an import's summary says it changed: its added, changed and removed. */
+function tablesChanged(summary: string): number {
+  const counts = /(\d+) added, (\d+) changed, (\d+) removed\.$/.exec(summary.split("\n")[0] ?? "");
+  return counts ? Number(counts[1]) + Number(counts[2]) + Number(counts[3]) : 0;
+}
+
+/** A Markdown document with a `## <file>` section for each entry, in the order given. */
+function sections(entries: readonly { file: string; body: string[] }[]): string {
+  return entries.flatMap(({ file, body }) => [`## ${file}`, "", ...body, ""]).join("\n");
+}
+
+/**
+ * What to tell the person once the imports of one drain of the queue are done. One import is told
+ * as it always was (`importNotice`), and so is one refusal. Several imports give one notice: how
+ * many files, how many tables changed and how many of the changes break, with a document of every
+ * file's changes. Several refusals give one warning with a document of the reasons. Imports come
+ * first, and a refusal is always a warning of its own, never folded into the imports' notice.
+ */
+export function batchNotices(entries: readonly BatchEntry[]): BatchNotice[] {
+  const imports = entries.filter((entry): entry is ImportedEntry => entry.kind === "imported");
+  const refusals = entries.filter((entry): entry is RefusedEntry => entry.kind === "refused");
+  return [importsNotice(imports), refusalsNotice(refusals)].filter(
+    (notice) => notice !== undefined,
+  );
+}
+
+function importsNotice(imports: readonly ImportedEntry[]): BatchNotice | undefined {
+  const [only] = imports;
+  if (!only) return undefined;
+  if (imports.length === 1) {
+    const { message, buttons } = importNotice(only);
+    return {
+      level: "information",
+      message,
+      ...(buttons[0] && { button: buttons[0], document: only.summary }),
+    };
+  }
+  const tables = imports.reduce((sum, entry) => sum + tablesChanged(entry.summary), 0);
+  const breaking = imports.reduce((sum, entry) => sum + entry.breaking, 0);
+  return {
+    level: "information",
+    message:
+      `Imported ${imports.length} files: ${tables} ${tables === 1 ? "table" : "tables"} changed` +
+      `${breaking > 0 ? `, ${breaking} breaking` : ""}.`,
+    button: showChanges,
+    document: sections(
+      imports.map(({ file, summary }) => ({
+        file,
+        body: ["```text", ...summary.replace(/\n+$/, "").split("\n"), "```"],
+      })),
+    ),
+  };
+}
+
+function refusalsNotice(refusals: readonly RefusedEntry[]): BatchNotice | undefined {
+  const [lone] = refusals;
+  if (!lone) return undefined;
+  if (refusals.length === 1) return { level: "warning", message: lone.message };
+  return {
+    level: "warning",
+    message: `${refusals.length} files could not be imported.`,
+    button: showReasons,
+    document: sections(
+      refusals.map(({ file, refused }) => ({
+        file,
+        body: editorReasons(refused).map((reason) => `- ${reason}`),
+      })),
+    ),
+  };
 }
 
 /** The warning for a project with no connection to import for. */
@@ -71,17 +177,36 @@ export function connectionChoice(
     : { kind: "pick", connections: [...connections] };
 }
 
-/** Where an import could not be finished: writing a file's change, or saving the file after it. */
-export interface ImportFailure {
-  file: string;
-  step: "write" | "save";
+/**
+ * Where an import could not be finished: reading a file of the project to write the change into
+ * (with the error), writing a file's change, or saving the file after it.
+ */
+export type ImportFailure =
+  { file: string; step: "write" | "save" } | { file: string; step: "read"; error: unknown };
+
+/** The warning for an import that could not be finished, in the project at `folder`. */
+export function importFailureNotice(failure: ImportFailure, folder = ""): string {
+  if (failure.step === "read") return readFailureNotice(failure.file, failure.error, folder);
+  return failure.step === "write"
+    ? `Could not write ${failure.file}.`
+    : `Wrote the import, but could not save ${failure.file}.`;
 }
 
-/** The warning for an import that could not be finished. */
-export function importFailureNotice({ file, step }: ImportFailure): string {
-  return step === "write"
-    ? `Could not write ${file}.`
-    : `Wrote the import, but could not save ${file}.`;
+/**
+ * The warning for a file of the project that could not be read to write the import into: which
+ * file (relative to the project) and why, never the file's content. An error of the file system
+ * (it has a `code`) gives its code alone; any other error gives its message with the project's
+ * folder left out of the paths in it, so only project-relative paths are shown.
+ */
+export function readFailureNotice(file: string, error: unknown, folder: string): string {
+  if (!(error instanceof Error)) return `Could not read ${file}.`;
+  const code = (error as { code?: unknown }).code;
+  if (typeof code === "string" && code !== "") return `Could not read ${file}: ${code}.`;
+  const message =
+    folder === ""
+      ? error.message
+      : error.message.replaceAll(`${folder}/`, "").replaceAll(`${folder}\\`, "");
+  return `Could not read ${file}: ${message}`;
 }
 
 /**

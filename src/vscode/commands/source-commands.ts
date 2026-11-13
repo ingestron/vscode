@@ -17,7 +17,7 @@ import {
   refusalNotice,
   requestChoices,
 } from "../../features/source-import.js";
-import { queued, reportImport } from "../editor/index.js";
+import { queued, reportImport, reportRefusal } from "../editor/index.js";
 import type { ExtensionState, Here } from "../state/index.js";
 import { showMarkdown } from "./markdown.js";
 
@@ -96,14 +96,14 @@ async function importQueued(
   options: ImportOptions,
 ): Promise<void> {
   const manifest = join(folder, "project.yaml");
+  const name = inProject(folder, file.fsPath) ?? basename(file.fsPath);
   try {
     state.forget(manifest);
     const here = state.projectAt(vscode.Uri.file(manifest));
     const result = here && (await importFile(here.project, file, options));
-    if (result) await finish(result, folder);
+    if (result) await finish(result, folder, name);
   } catch (error) {
     console.error("ingestron: a file could not be imported", error);
-    const name = inProject(folder, file.fsPath) ?? basename(file.fsPath);
     void vscode.window.showWarningMessage(failedNotice(name, error));
   }
 }
@@ -175,12 +175,16 @@ async function connectionFor(here: Here, file: vscode.Uri): Promise<string | und
   return picked ?? null;
 }
 
-/** Tells the person why an import stopped, or writes it and tells them what changed. */
+/**
+ * Records why an import of `name` (relative to the project) stopped, or writes it and records what
+ * changed; both are told when the queue is empty.
+ */
 async function finish(
   result: SourceImportEdit | SourceImportRefusal,
   folder: string,
+  name: string,
 ): Promise<void> {
   if ("refused" in result)
-    return void vscode.window.showWarningMessage(refusalNotice(result.refused));
-  await reportImport(result, folder, showMarkdown);
+    return reportRefusal(name, refusalNotice(result.refused), result.refused, showMarkdown);
+  await reportImport(result, name, folder, showMarkdown);
 }

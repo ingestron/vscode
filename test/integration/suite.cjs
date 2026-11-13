@@ -893,7 +893,7 @@ async function undoneImport(manifest, kept, written) {
  * A file saved under sources/ is imported straight away, once: sources/shop.yaml is written and
  * saved, project.yaml gains its import line, a notice says what changed and the problems follow.
  * The import's own writes start nothing; a refused file writes nothing and warns; a Parquet file
- * is read as bytes; the nearest of two nested projects takes a file; project.yaml's unsaved
+ * is read as bytes; five files at once give one notice; the nearest of two nested projects takes a file; project.yaml's unsaved
  * typing survives.
  */
 async function sourceWatching(folder) {
@@ -963,6 +963,16 @@ async function sourceWatching(folder) {
     await until(() => notices.info.length > 0, "the notice of a Parquet file");
     assert.ok(saved(written), "the metadata of a Parquet file");
     assert.match(fs.readFileSync(written, "utf8"), /object: orders/);
+    assert.equal(notices.warnings.length, 0, notices.warnings.join("\n"));
+    await reset();
+
+    // Five files copied in at once are five imports queued together: one notice, not five.
+    for (const name of ["a", "b", "c", "d", "e"])
+      put(path.join(folder, "sources", "shop", `${name}.csv`), "id,name\n1,x\n");
+    await until(() => notices.info.length > 0, "the notice of five files");
+    await wait(2000);
+    assert.equal(notices.info.length, 1, notices.info.join("\n"));
+    assert.match(notices.info[0], /^Imported 5 files: 5 tables changed/);
     assert.equal(notices.warnings.length, 0, notices.warnings.join("\n"));
     await reset();
 
