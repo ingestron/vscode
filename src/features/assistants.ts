@@ -30,5 +30,9 @@ export function assistantFlags(names: readonly string[]): string[] {
 /** The notice after the files were written. */
 export const addedMessage = "Added the assistant files. The Ingestron output lists each one.";
 
+/** The warning when the command exits 1: some files were not written, and the output says why. */
+export const notWrittenMessage =
+  "Some assistant files were not written. The Ingestron output says why.";
+
 /** The button that opens the guide. */
 export const openGuide = "Open AGENTS.md";

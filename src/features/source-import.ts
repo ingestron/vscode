@@ -26,11 +26,14 @@ export function importNotice(edit: { summary: string; breaking: number }): {
   };
 }
 
+/** The reasons an import stopped, as the editor says them: it has no --object option to name. */
+export function editorReasons(refused: readonly string[]): string[] {
+  return refused.map((reason) => reason.replace(" with --object.", "."));
+}
+
 /** The warning for an import that stopped: nothing was written, and each reason. */
 export function refusalNotice(refused: readonly string[]): string {
-  // The editor asks for the table in a box; it has no --object option to name.
-  const reasons = refused.map((reason) => reason.replace(" with --object.", "."));
-  return ["Nothing was imported.", ...reasons].join(" ");
+  return ["Nothing was imported.", ...editorReasons(refused)].join(" ");
 }
 
 /** The warning for a project with no connection to import for. */
@@ -71,17 +74,36 @@ export function connectionChoice(
     : { kind: "pick", connections: [...connections] };
 }
 
-/** Where an import could not be finished: writing a file's change, or saving the file after it. */
-export interface ImportFailure {
-  file: string;
-  step: "write" | "save";
+/**
+ * Where an import could not be finished: reading a file of the project to write the change into
+ * (with the error), writing a file's change, or saving the file after it.
+ */
+export type ImportFailure =
+  { file: string; step: "write" | "save" } | { file: string; step: "read"; error: unknown };
+
+/** The warning for an import that could not be finished, in the project at `folder`. */
+export function importFailureNotice(failure: ImportFailure, folder = ""): string {
+  if (failure.step === "read") return readFailureNotice(failure.file, failure.error, folder);
+  return failure.step === "write"
+    ? `Could not write ${failure.file}.`
+    : `Wrote the import, but could not save ${failure.file}.`;
 }
 
-/** The warning for an import that could not be finished. */
-export function importFailureNotice({ file, step }: ImportFailure): string {
-  return step === "write"
-    ? `Could not write ${file}.`
-    : `Wrote the import, but could not save ${file}.`;
+/**
+ * The warning for a file of the project that could not be read to write the import into: which
+ * file (relative to the project) and why, never the file's content. An error of the file system
+ * (it has a `code`) gives its code alone; any other error gives its message with the project's
+ * folder left out of the paths in it, so only project-relative paths are shown.
+ */
+export function readFailureNotice(file: string, error: unknown, folder: string): string {
+  if (!(error instanceof Error)) return `Could not read ${file}.`;
+  const code = (error as { code?: unknown }).code;
+  if (typeof code === "string" && code !== "") return `Could not read ${file}: ${code}.`;
+  const message =
+    folder === ""
+      ? error.message
+      : error.message.replaceAll(`${folder}/`, "").replaceAll(`${folder}\\`, "");
+  return `Could not read ${file}: ${message}`;
 }
 
 /**

@@ -2,12 +2,9 @@
 import { join } from "node:path";
 import * as vscode from "vscode";
 import type { SourceImportEdit } from "@ingestron/authoring";
-import {
-  importFailureNotice,
-  importNotice,
-  showChanges,
-  type ImportFailure,
-} from "../../features/source-import.js";
+import { batchNotices, type BatchEntry } from "../../features/source-batch.js";
+import { importFailureNotice, type ImportFailure } from "../../features/source-import.js";
+import { idle, onEmpty } from "./source-queue.js";
 
 /** A file the import changes, and whether to save it afterwards. */
 interface Change {
@@ -20,18 +17,16 @@ interface Change {
  * Replaces each file of `imported` in the project at `folder` (open editors hold the text it was
  * made from), or creates it, as one change that one undo reverts. Then saves the metadata
  * document; project.yaml is saved only when it had no unsaved changes before, since saving it
- * otherwise would write the person's own unfinished typing. Returns where it failed, if it did.
+ * otherwise would write the person's own unfinished typing. Returns where it failed, if it did;
+ * a file that cannot be read fails before anything is written.
  */
 export async function applyImport(
   imported: Pick<SourceImportEdit, "files">,
   folder: string,
 ): Promise<ImportFailure | undefined> {
   const edit = new vscode.WorkspaceEdit();
-  const changes: Change[] = [];
-  for (const { file, text } of imported.files) {
-    const change = await stage(edit, vscode.Uri.file(join(folder, file)), file, text);
-    if (change) changes.push(change);
-  }
+  const changes = await stageAll(edit, imported, folder);
+  if (!Array.isArray(changes)) return changes;
   if (!(await vscode.workspace.applyEdit(edit)))
     return { file: changes[0]?.file ?? "the import", step: "write" };
   for (const { file, uri, save } of changes) {
@@ -41,22 +36,87 @@ export async function applyImport(
   return undefined;
 }
 
+/** What the imports of one drain of the queue gave, told when the queue is empty. */
+let entries: BatchEntry[] = [];
+let showText: ((text: string) => Thenable<unknown>) | undefined;
+onEmpty(tellRecorded);
+
 /**
- * Writes an import (see `applyImport`) and tells the person what changed, with a button that
- * shows every change through `show`; or that it could not be finished. Done when the files are
- * written, not when the message is closed.
+ * Writes an import (see `applyImport`) of `file` (relative to the project) and records what
+ * changed, or warns that it could not be finished. Done when the files are written, not when the
+ * message is closed. What changed is told when the queue is empty, with the other imports of the
+ * same drain as one notice (see `batchNotices`); `show` opens a document of the changes.
  */
 export async function reportImport(
   imported: SourceImportEdit,
+  file: string,
   folder: string,
-  show: (summary: string) => Thenable<unknown>,
+  show: (text: string) => Thenable<unknown>,
 ): Promise<void> {
   const failure = await applyImport(imported, folder);
-  if (failure) return void vscode.window.showWarningMessage(importFailureNotice(failure));
-  const { message, buttons } = importNotice(imported);
-  void vscode.window.showInformationMessage(message, ...buttons).then((pressed) => {
-    if (pressed === showChanges) return show(imported.summary);
-  });
+  if (failure) return void vscode.window.showWarningMessage(importFailureNotice(failure, folder));
+  record({ kind: "imported", file, summary: imported.summary, breaking: imported.breaking }, show);
+}
+
+/**
+ * Records an import of `file` that stopped, with the warning it gives alone (`message`) and each
+ * reason; told when the queue is empty, never folded into the notice of the imports.
+ */
+export function reportRefusal(
+  file: string,
+  message: string,
+  refused: readonly string[],
+  show: (text: string) => Thenable<unknown>,
+): void {
+  record({ kind: "refused", file, message, refused }, show);
+}
+
+function record(entry: BatchEntry, show: (text: string) => Thenable<unknown>): void {
+  entries.push(entry);
+  showText ??= show;
+  // Outside the queue nothing is draining, so nothing would tell it.
+  if (idle()) tellRecorded();
+}
+
+/**
+ * Tells the person now what the recorded imports gave, as one notice of each kind. For a task
+ * that is about to wait on the person, so what finished before it is not held back by the wait;
+ * what finishes after it is told as another batch.
+ */
+export function tellRecorded(): void {
+  const done = entries;
+  const show = showText;
+  entries = [];
+  showText = undefined;
+  if (!show) return;
+  for (const { level, message, button, document } of batchNotices(done)) {
+    const buttons = button ? [button] : [];
+    const shown =
+      level === "warning"
+        ? vscode.window.showWarningMessage(message, ...buttons)
+        : vscode.window.showInformationMessage(message, ...buttons);
+    void shown.then((pressed) => {
+      if (pressed === button && document !== undefined) return show(document);
+    });
+  }
+}
+
+/** Stages every file of the import; the failure instead for one that is there but cannot be read. */
+async function stageAll(
+  edit: vscode.WorkspaceEdit,
+  imported: Pick<SourceImportEdit, "files">,
+  folder: string,
+): Promise<Change[] | ImportFailure> {
+  const changes: Change[] = [];
+  for (const { file, text } of imported.files) {
+    try {
+      const change = await stage(edit, vscode.Uri.file(join(folder, file)), file, text);
+      if (change) changes.push(change);
+    } catch (error) {
+      return { file, step: "read", error };
+    }
+  }
+  return changes;
 }
 
 /** Adds the file's new text to `edit`; undefined, adding nothing, when the file already holds it. */

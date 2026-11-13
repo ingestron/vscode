@@ -8,6 +8,7 @@ import {
   assistantItems,
   assistantPlaceholder,
   newProjectTitle,
+  notWrittenMessage,
   openGuide,
 } from "../../features/assistants.js";
 import type { ExtensionState } from "../state/index.js";
@@ -59,7 +60,7 @@ async function addAssistantFiles(
     cwd: folder,
     write: (text) => output.append(text),
   });
-  if (code !== 0) return;
+  if (code !== 0) return void vscode.window.showWarningMessage(notWrittenMessage);
   const picked = await vscode.window.showInformationMessage(addedMessage, openGuide);
   if (picked === openGuide) {
     await vscode.window.showTextDocument(vscode.Uri.file(join(folder, "AGENTS.md")));
