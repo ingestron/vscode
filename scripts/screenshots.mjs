@@ -872,7 +872,7 @@ const groups = [
           ["minimal", "shop"],
           ["private-sql-server", "erp"],
         ],
-        { size: [width + 2 * inset, 420], extraSettings: { "editor.wordWrap": "on" } },
+        { size: [width + 2 * inset, 470], extraSettings: { "editor.wordWrap": "on" } },
       );
       const { window, palette, open, show, drag, fold, frame, resize, pause } = s;
       await show("sidebar", false);

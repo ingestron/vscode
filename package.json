@@ -1,8 +1,8 @@
 {
   "name": "ingestron-vscode",
   "displayName": "Ingestron",
-  "description": "Problems, navigation, completion, setting explanations and generated-file previews for Ingestron projects.",
-  "version": "2.2.1",
+  "description": "Problems, navigation, completion, setting explanations, generated-file previews, source metadata requests and imports, and a guide for coding assistants, for Ingestron projects.",
+  "version": "2.3.0",
   "publisher": "ingestron",
   "private": true,
   "license": "Apache-2.0",
