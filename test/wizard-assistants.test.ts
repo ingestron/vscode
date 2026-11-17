@@ -52,7 +52,7 @@ import { assistantPlaceholder, newProjectTitle } from "../src/features/assistant
 import { registerWizard } from "../src/vscode/wizard/wizard.js";
 
 beforeEach(() => {
-  state.choices = ["From a starter", "minimal"];
+  state.choices = ["sample", "minimal"];
   state.ticks = [];
   state.tickable = [];
   state.folderAsked = false;

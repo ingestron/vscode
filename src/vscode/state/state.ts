@@ -1,7 +1,7 @@
 // What the extension keeps: the project for a file (with open editors read
 // before the disk) and the environment chosen for each project, which is
 // remembered in the workspace so it is the same after a restart.
-import { statSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { join, sep } from "node:path";
 import * as vscode from "vscode";
 import { inProject, positionAt, projectFolderOf, ProjectSnapshot } from "@ingestron/authoring";
@@ -25,6 +25,7 @@ const environmentsKey = "ingestron.environments";
  * project, kept in the workspace's memory. Made once, when the extension starts.
  */
 export class ExtensionState implements vscode.Disposable {
+  #lastFolder?: string;
   readonly #memory: vscode.Memento;
   readonly #environments = new Map<string, string>();
   readonly #projects = new Map<string, ProjectSnapshot>();
@@ -66,6 +67,8 @@ export class ExtensionState implements vscode.Disposable {
    * gives its environment, so a command run from it acts on what it shows.
    */
   contextAt(uri: vscode.Uri): Here | undefined {
+    if (uri.scheme === "ingestron-review" && uri.query)
+      return this.projectAt(vscode.Uri.file(join(uri.query, "project.yaml")));
     if (uri.scheme !== previewScheme) return this.projectAt(uri);
     const { folder, file, environment } = previewOf(uri);
     const here = this.projectAt(vscode.Uri.file(join(folder, "project.yaml")));
@@ -79,14 +82,29 @@ export class ExtensionState implements vscode.Disposable {
    */
   hereFor(uri: vscode.Uri | undefined): Here | undefined {
     // Menus pass a URI; anything else a command might be given means the active editor.
-    if (typeof uri?.scheme !== "string") {
-      const active = vscode.window.activeTextEditor?.document.uri;
-      return active && this.contextAt(active);
+    if (typeof uri?.scheme !== "string") return this.paletteHere();
+    if (!isFolder(uri)) {
+      const here = this.contextAt(uri);
+      if (here) this.#lastFolder = here.project.folder;
+      return here;
     }
-    if (!isFolder(uri)) return this.contextAt(uri);
     // projectFolderOf starts at a path's parent, so a stand-in file inside the folder includes it.
     const inside = join(uri.fsPath, "project.yaml");
     const folder = projectFolderOf(inside);
+    if (folder) this.#lastFolder = folder;
+    return folder ? this.projectAt(vscode.Uri.file(join(folder, "project.yaml"))) : undefined;
+  }
+
+  /** Keep an explicit project selection when Output temporarily owns editor focus. */
+  private paletteHere(): Here | undefined {
+    const active = vscode.window.activeTextEditor?.document.uri;
+    const here = active && this.contextAt(active);
+    if (here) {
+      this.#lastFolder = here.project.folder;
+      return here;
+    }
+    if (active?.scheme === "file") return undefined;
+    const folder = this.#lastFolder ?? onlyWorkspaceProject();
     return folder ? this.projectAt(vscode.Uri.file(join(folder, "project.yaml"))) : undefined;
   }
 
@@ -106,6 +124,7 @@ export class ExtensionState implements vscode.Disposable {
 
   /** Remembers the environment for the project. */
   chooseEnvironment(project: ProjectSnapshot, environment: string): void {
+    this.#lastFolder = project.folder;
     this.#environments.set(project.folder, environment);
     void this.#memory.update(environmentsKey, Object.fromEntries(this.#environments));
     this.#changes.fire();
@@ -168,4 +187,12 @@ export function rangeIn(
 /** The URI of a project file. */
 export function uriOf(project: ProjectSnapshot, file: string): vscode.Uri {
   return vscode.Uri.file(join(project.folder, file));
+}
+
+/** A palette action can use a sole root project without guessing between workspace folders. */
+function onlyWorkspaceProject(): string | undefined {
+  const folders = vscode.workspace.workspaceFolders ?? [];
+  if (folders.length !== 1) return undefined;
+  const folder = folders[0]!.uri.fsPath;
+  return existsSync(join(folder, "project.yaml")) ? folder : undefined;
 }

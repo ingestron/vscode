@@ -172,6 +172,9 @@ class ProjectTree implements vscode.TreeDataProvider<TreeNode>, vscode.Disposabl
         folder,
         id: idOf(project.files.read("project.yaml"), folder),
         environments: project.environments,
+        modes: Object.fromEntries(
+          project.environments.map((name) => [name, project.environmentMode(name)]),
+        ),
         ...(chosen && { chosen }),
       });
     }

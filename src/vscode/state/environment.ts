@@ -20,9 +20,18 @@ export async function selectEnvironment(
   if (!here || here.project.environments.length === 0) return;
   const picked = named
     ? here.project.environments.find((environment) => environment === name)
-    : await vscode.window.showQuickPick(here.project.environments, {
-        placeHolder: "Environment for problems, previews and the platform request",
-      });
+    : (
+        await vscode.window.showQuickPick(
+          here.project.environments.map((label) => ({
+            label,
+            description:
+              here.project.environmentMode(label) ?? "mode unavailable until the project resolves",
+          })),
+          {
+            placeHolder: "Environment for problems, previews and the platform request",
+          },
+        )
+      )?.label;
   if (!picked) return;
   state.chooseEnvironment(here.project, picked);
   refresh(vscode.Uri.file(join(here.project.folder, "project.yaml")));

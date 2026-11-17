@@ -7,7 +7,7 @@ import { run } from "@ingestron/cli";
 import * as vscode from "vscode";
 import { inProject, generatedForTable, tableAtCursor, type Generated } from "@ingestron/authoring";
 import { stoppedMessage } from "../../features/stopped.js";
-import { showMarkdown } from "./markdown.js";
+import { registerMarkdown, showMarkdown } from "./markdown.js";
 import { previewUri, registerPreviews } from "../editor/index.js";
 import { selectEnvironment, type ExtensionState } from "../state/index.js";
 
@@ -18,6 +18,7 @@ export function registerCommands(
   output: vscode.OutputChannel,
   refresh: (uri: vscode.Uri) => void,
 ): void {
+  registerMarkdown(context);
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
   status.command = "ingestron.selectEnvironment";
   const updateStatus = () => {
@@ -50,8 +51,10 @@ export function registerCommands(
 /** Show generated files, Compare with build, Prepare platform request and Compare environments. */
 function showCommands(state: ExtensionState): vscode.Disposable[] {
   return [
-    vscode.commands.registerCommand("ingestron.showGenerated", (uri?: vscode.Uri) =>
-      showGenerated(state, false, uri),
+    vscode.commands.registerCommand(
+      "ingestron.showGenerated",
+      (uri?: vscode.Uri, paths?: string[]) =>
+        showGenerated(state, false, uri, Array.isArray(paths) ? paths : undefined),
     ),
     vscode.commands.registerCommand("ingestron.compareWithBuild", () => showGenerated(state, true)),
     vscode.commands.registerCommand("ingestron.openGenerated", (source: vscode.Uri, path: string) =>
@@ -112,6 +115,7 @@ async function showGenerated(
   state: ExtensionState,
   compare: boolean,
   clicked?: vscode.Uri,
+  paths?: string[],
 ): Promise<void> {
   const here = state.hereFor(clicked);
   if (!here) return;
@@ -132,7 +136,7 @@ async function showGenerated(
     editor && (!clicked || editor.document.uri.toString() === clicked.toString())
       ? tableAtCursor(editor.document.getText(), editor.document.offsetAt(editor.selection.active))
       : undefined;
-  const chosen = await pick(table ? generatedForTable(files, table) : [], files);
+  const chosen = await pick(preferredFiles(files, paths, table), files);
   if (!chosen) return;
   const preview = previewUri(here.project, environment, chosen.path);
   if (!compare) return void vscode.window.showTextDocument(preview, { preview: true });
@@ -149,7 +153,7 @@ async function showGenerated(
 async function showPlatformRequest(state: ExtensionState, uri?: vscode.Uri): Promise<void> {
   const here = state.hereFor(uri);
   if (!here) return void vscode.window.showWarningMessage("Open a file of an Ingestron project.");
-  await showMarkdown(here.project.request(state.environmentHere(here)));
+  await showMarkdown(here.project.request(state.environmentHere(here)), here.project.folder);
 }
 
 /** The differences between two environments, chosen when the project has more than two. */
@@ -169,7 +173,7 @@ async function showComparison(state: ExtensionState, uri?: vscode.Uri): Promise<
         });
   if (picked?.length !== 2) return;
   const content = here.project.compare(picked[0]!, picked[1]!);
-  await showMarkdown(content);
+  await showMarkdown(content, here.project.folder);
 }
 
 /** Opens one generated file, by its path in the project, for the file's project. */
@@ -213,4 +217,14 @@ async function saveProject(folder: string): Promise<string | undefined> {
   for (const document of changed)
     if (!(await document.save())) return inProject(folder, document.uri.fsPath);
   return undefined;
+}
+
+/** A per-table lens keeps its own file set even when the caret is in another table. */
+function preferredFiles(
+  files: Generated[],
+  paths: string[] | undefined,
+  table: string | undefined,
+): Generated[] {
+  if (paths) return files.filter((file) => paths.includes(file.path));
+  return table ? generatedForTable(files, table) : [];
 }

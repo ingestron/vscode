@@ -4,6 +4,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import * as editor from "vscode";
 import type * as vscode from "vscode";
 
 vi.mock("vscode", () => {
@@ -108,4 +109,33 @@ describe("ExtensionState", () => {
     expect(state.environmentHere(here)).toBe("dev");
     expect(state.environmentHere({ ...here, environment: "prod" })).toBe("prod");
   });
+});
+
+it("retains explicit project context when Output takes focus", () => {
+  const folder = projectFolder();
+  const state = new ExtensionState(memento());
+  expect(state.hereFor(fileIn(folder))?.project.folder).toBe(folder);
+  Object.assign(editor.window, { activeTextEditor: { document: { uri: { scheme: "output" } } } });
+  expect(state.hereFor(undefined)?.project.folder).toBe(folder);
+  Object.assign(editor.window, { activeTextEditor: undefined });
+});
+
+it("does not redirect a command from an unrelated file into the previous project", () => {
+  const folder = projectFolder();
+  const state = new ExtensionState(memento());
+  state.hereFor(fileIn(folder));
+  Object.assign(editor.window, {
+    activeTextEditor: { document: { uri: { scheme: "file", fsPath: "/unrelated/file.yaml" } } },
+  });
+  expect(state.hereFor(undefined)).toBeUndefined();
+  Object.assign(editor.window, { activeTextEditor: undefined });
+});
+
+it("does not guess between multiple workspace projects without an explicit context", () => {
+  const state = new ExtensionState(memento());
+  Object.assign(editor.workspace, {
+    workspaceFolders: [{ uri: { fsPath: projectFolder() } }, { uri: { fsPath: projectFolder() } }],
+  });
+  expect(state.hereFor(undefined)).toBeUndefined();
+  Object.assign(editor.workspace, { workspaceFolders: undefined });
 });

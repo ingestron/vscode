@@ -50,6 +50,8 @@ describe("foldOf", () => {
       "none",
       "none",
       "none",
+      "none",
+      "none",
     ]);
   });
 });

@@ -16,6 +16,7 @@ const state = vi.hoisted(() => ({
   workspace: "",
   executed: [] as [string, unknown][],
   messages: [] as string[],
+  answer: undefined as string | undefined,
 }));
 vi.mock("vscode", () => ({
   commands: {
@@ -59,9 +60,9 @@ vi.mock("vscode", () => ({
       return [{ fsPath: state.folder }];
     },
     showTextDocument: async () => {},
-    showInformationMessage: async (message: string) => {
+    showInformationMessage: async (message: string, ...actions: string[]) => {
       state.messages.push(message);
-      return undefined;
+      return actions.find((action) => action === state.answer);
     },
     showErrorMessage: async (message: string) => {
       throw new Error(message);
@@ -79,6 +80,7 @@ beforeEach(() => {
   state.workspace = "";
   state.executed = [];
   state.messages = [];
+  state.answer = undefined;
   state.folder = join(mkdtempSync(join(tmpdir(), "ingestron-wizard-")), "project");
   registerWizard(
     { subscriptions: [] } as unknown as vscode.ExtensionContext,
@@ -91,61 +93,22 @@ beforeEach(() => {
     } as unknown as vscode.OutputChannel,
   );
 });
-it("asks only the connection, its reachability and route, then opens README.md", async () => {
-  state.choices = ["From a connection", "All sources", "postgresql", "private", "adf-databricks"];
+it.each([0, 1])("cancels at question %s without asking for a folder", async (step) => {
+  state.choices = ["synapse"].slice(0, step);
   await state.command!();
-  expect(state.menus[4]).toEqual([
-    "ADF ingestion into Databricks",
-    "ADF ingestion, served as Synapse serverless SQL views",
-    "ADF ingestion into DuckDB tables",
-    "ADF ingestion, ending at the landed files",
-  ]);
-  expect(state.menus).toHaveLength(5);
-  expect(state.suggested).toEqual([]);
-  expect(state.folderAsked).toBe(true);
-  expect(readFileSync(join(state.folder, "connections/postgresql.yaml"), "utf8")).toContain(
-    "server: REPLACE_ME",
-  );
-  expect(readFileSync(join(state.folder, "standard.yaml"), "utf8")).toContain("adf@2");
-  // The project id comes from the folder, as in the terminal.
-  expect(readFileSync(join(state.folder, "project.yaml"), "utf8")).toContain("id: project");
-  expect(state.executed).toEqual([
-    ["markdown.showPreview", { fsPath: join(state.folder, "README.md") }],
-  ]);
-  expect(state.messages[0]).toMatch(
-    /^Created the project\. \d+ values are still REPLACE_ME: README\.md lists them\.$/,
-  );
+  expect(state.folderAsked).toBe(false);
+  expect(existsSync(state.folder)).toBe(false);
 });
 
-it("offers both routes for public files and creates the chosen direct project", async () => {
-  state.choices = ["From a connection", "Files and storage", "files", "public", "databricks"];
-  await state.command!();
-  expect(state.menus[4]).toEqual([
-    "Databricks directly",
-    "ADF ingestion into Databricks",
-    "ADF ingestion, ending at the landed files",
-  ]);
-  expect(state.output).toContain("Created");
-  expect(readFileSync(join(state.folder, "standard.yaml"), "utf8")).not.toContain("adf@2");
-});
-
-it.each([0, 1, 2, 3, 4])(
-  "cancels at source-choice step %s without asking for a folder",
-  async (step) => {
-    state.choices = ["From a connection", "All sources", "files", "public"].slice(0, step);
-    await state.command!();
-    expect(state.folderAsked).toBe(false);
-    expect(existsSync(state.folder)).toBe(false);
-  },
-);
-
-it("creates a project from a starter, with the starter's environments, and asks nothing else", async () => {
-  state.choices = ["From a starter", "duckdb"];
+it("creates a sample project, with the sample's environments, and asks nothing else", async () => {
+  state.choices = ["sample", "duckdb"];
   await state.command!();
   expect(state.menus[0]).toEqual([
-    "From a connection",
-    "From a starter",
-    "From a published standard",
+    "Azure Synapse",
+    "Databricks",
+    "Azure Data Factory",
+    "DuckDB",
+    "Try a sample project",
   ]);
   expect(state.menus[1]).toContain("DuckDB on a laptop");
   expect(state.suggested).toEqual([]);
@@ -157,8 +120,8 @@ it("creates a project from a starter, with the starter's environments, and asks 
   expect(state.messages[0]).toBe("Created the project. Nothing to replace: it runs as written.");
 });
 
-it("cancels choosing a starter without asking for a folder", async () => {
-  state.choices = ["From a starter"];
+it("cancels choosing a sample without asking for a folder", async () => {
+  state.choices = ["sample"];
   await state.command!();
   expect(state.folderAsked).toBe(false);
   expect(existsSync(state.folder)).toBe(false);
@@ -168,7 +131,7 @@ it("keeps a README.md the folder already has, and still opens it", async () => {
   const { mkdirSync } = await import("node:fs");
   mkdirSync(state.folder, { recursive: true });
   writeFileSync(join(state.folder, "README.md"), "# Ours\n");
-  state.choices = ["From a starter", "minimal"];
+  state.choices = ["sample", "minimal"];
   await state.command!();
   expect(readFileSync(join(state.folder, "README.md"), "utf8")).toBe("# Ours\n");
   expect(state.executed[0]?.[0]).toBe("markdown.showPreview");
@@ -184,4 +147,19 @@ it("reads the count from what init printed", () => {
   expect(createdMessage("Nothing to replace: the project runs as written.\n")).toBe(
     "Created the project. Nothing to replace: it runs as written.",
   );
+});
+
+it("starts with the target platform and writes no forced source or flow", async () => {
+  state.choices = ["synapse", "A new standard for Azure Synapse"];
+  state.answer = "Add connection";
+  await state.command!();
+  expect(state.menus[1]![0]).toBe("A new standard for Azure Synapse");
+  expect(state.menus[1]!.at(-1)).toBe("Your team's standard file");
+  expect(existsSync(join(state.folder, "platform.yaml"))).toBe(true);
+  expect(existsSync(join(state.folder, "connections"))).toBe(false);
+  expect(existsSync(join(state.folder, "flows"))).toBe(false);
+  expect(readFileSync(join(state.folder, "README.md"), "utf8")).toContain("Add connection");
+  expect(state.messages[0]).toContain("Review target settings");
+  // The next step is a connection: the notice offers it.
+  expect(state.executed.at(-1)).toEqual(["ingestron.addConnection", { fsPath: state.folder }]);
 });

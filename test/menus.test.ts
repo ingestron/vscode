@@ -47,7 +47,7 @@ describe("Explorer menu", () => {
       expect(entry?.when, command).toContain("explorerResourceIsFolder");
       expect(entry?.when, command).toContain("resourcePath in ingestron.projectFolders");
       // A file counts only when it is inside a project: never any YAML file.
-      expect(entry?.when, command).toContain("resourcePath in ingestron.projectFiles");
+      expect(entry?.when, command).toContain("resourcePath in ingestron.projectManifests");
       expect(entry?.when, command).not.toContain("hasProjects");
     });
   });
@@ -59,7 +59,7 @@ describe("Explorer menu", () => {
     expect(entries).toEqual([
       {
         command: "ingestron.importSourceMetadata",
-        when: "explorerResourceIsFolder && resourcePath in ingestron.projectFolders",
+        when: "explorerResourceIsFolder && (resourcePath in ingestron.projectFolders || resourcePath in ingestron.sourceFolders)",
         group: "ingestron@7",
       },
       {
@@ -68,6 +68,29 @@ describe("Explorer menu", () => {
         group: "ingestron@7",
       },
     ]);
+  });
+
+  it("limits file actions to the file purpose and additions to the matching folders", () => {
+    const explorer = menus["explorer/context"]!;
+    for (const entry of explorer.filter(
+      (entry) => entry.command !== "ingestron.importSourceMetadata",
+    ))
+      expect(entry.when).not.toContain("in ingestron.projectFiles");
+    expect(named("explorer/context", "ingestron.addConnection")?.when).toContain(
+      "in ingestron.connectionFolders",
+    );
+    expect(named("explorer/context", "ingestron.addFlow")?.when).toContain(
+      "in ingestron.flowFolders",
+    );
+    expect(named("explorer/context", "ingestron.showGenerated")?.when).toBe(
+      "resourcePath in ingestron.flowFiles",
+    );
+    expect(named("explorer/context", "ingestron.draftContractFromMetadata")?.when).toBe(
+      "resourcePath in ingestron.flowFiles",
+    );
+    expect(named("explorer/context", "ingestron.requestSourceMetadata")?.when).toContain(
+      "in ingestron.connectionFiles",
+    );
   });
 
   it("keeps Draft contract on sample files only", () => {

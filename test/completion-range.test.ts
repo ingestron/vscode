@@ -54,7 +54,7 @@ vi.mock("vscode", () => {
 
 const files: Record<string, string> = {
   "project.yaml":
-    "id: retail\nenvironments:\n  dev: {}\nimports:\n  - standard.yaml\n  - connections/*.yaml\n  - flows/*.yaml\n  - sources/*.yaml\n",
+    "id: retail\nenvironments:\n  dev: {}\nvalues:\n  stage: dev\nimports:\n  - standard.yaml\n  - connections/*.yaml\n  - flows/*.yaml\n  - sources/*.yaml\n",
   "standard.yaml":
     "apiVersion: ingestron.io/v1\nkind: Standard\nid: retail\npacks: [databricks@2]\nlayers:\n  - { name: bronze, does: raw }\n",
   "connections/erp.yaml":
@@ -120,6 +120,42 @@ describe("completion of a dotted value", () => {
     const line = text.split("\n")[cursor.line]!;
     expect(line.slice(0, start.character) + (item!.insertText ?? item!.label)).toBe(
       "    object: ERP.dbo.Customers",
+    );
+  });
+});
+
+describe("completion of a value name inside ${values.…}", () => {
+  it("replaces the rest of the name after the cursor too", async () => {
+    const { registerProviders } = await import("../src/vscode/editor/providers.js");
+    const project = ProjectSnapshot.open(folder);
+    const file = "connections/erp.yaml";
+    registerProviders(
+      { subscriptions: [] } as never,
+      { projectAt: () => ({ project, file }), environmentOf: () => "dev" } as never,
+    );
+    const provider = registered.completion as Provider;
+
+    const marked = files[file]!.replace(
+      "uc_connection: erp_connection",
+      "uc_connection: erp_${values.|stage}",
+    );
+    const text = marked.replace("|", "");
+    const offset = marked.indexOf("|");
+    const document = {
+      uri: { scheme: "file", fsPath: join(folder, file) },
+      getText: () => text,
+      offsetAt: () => offset,
+      positionAt: (at: number) => positionAt(text, at),
+    };
+    const item = provider
+      .provideCompletionItems(document, positionAt(text, offset))
+      .find((candidate) => candidate.label === "stage");
+    expect(item).toBeDefined();
+    const { start, end } = item!.range!;
+    const line = text.split("\n")[start.line]!;
+    // Accepting it, as the editor replaces the range, keeps one name.
+    expect(line.slice(0, start.character) + item!.label + line.slice(end.character)).toBe(
+      "  uc_connection: erp_${values.stage}",
     );
   });
 });

@@ -1,31 +1,11 @@
-# A project
+# Create the target and standard
 
-A project is a folder with `project.yaml`: its id, its environments and the
-files it imports.
+Run **Ingestron: New project**. Choose where the project runs, then which
+standard it follows: a new one for that platform, a published standard, or your
+team's standard file. To look around first, choose **Try a sample project**.
 
-```yaml
-id: retail
-environments:
-  dev: {}
-  prod: {}
-imports:
-  - standard.yaml
-  - platform.yaml
-  - connections/*.yaml
-  - flows/*.yaml
-  - contracts/*.yaml
-```
-
-**New project** starts from a connection: it asks for the source category,
-connection, supported route and standard, then the settings and destination
-folder. Or it copies a starter, a ready-made project such as DuckDB on a
-laptop: give it a name, environments, your organisation's standard if you have
-one, any settings the starter asks for, and a folder. A standard's path can be
-relative to the workspace.
-
-A **data product** is a file in `products/` (import `products/*.yaml`): who
-owns it, what it is for, and the contracts whose tables it publishes. A new
-empty file there offers a skeleton. Apply writes a plain-language passport per
-product to `build/products/<environment>/`, and the standard's `governance`
-section can require owners, purposes and column classifications, shown as
-problems until they are met.
+Review platform.yaml and each environment in project.yaml, then choose **Add
+connection** and **Add flow** in the Project panel. A new project has no source
+or flow. Keep fixed standard settings and review target placeholders before
+planning. Plan, local Apply and Check generate and review files; they do not
+deploy or execute them.

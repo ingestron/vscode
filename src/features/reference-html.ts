@@ -7,7 +7,7 @@ const style = `
 body { overflow-wrap: anywhere; color: var(--vscode-foreground); font: var(--vscode-font-size) var(--vscode-font-family); padding: 4px 12px 12px; line-height: 1.45; }
 h1 { font-size: 1.15em; margin: 8px 0 0; }
 h2 { font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--vscode-descriptionForeground); margin: 14px 0 4px; font-weight: 600; }
-p { margin: 4px 0; }
+p { margin: 4px 0; white-space: pre-line; }
 .sub { color: var(--vscode-descriptionForeground); margin-top: 0; }
 code { font-family: var(--vscode-editor-font-family); font-size: 0.95em; background: var(--vscode-textCodeBlock-background); padding: 0 2px; border-radius: 3px; }
 ul { margin: 4px 0; padding-left: 18px; }

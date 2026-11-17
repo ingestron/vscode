@@ -23,6 +23,7 @@ const any = new Proxy(function () {}, {
 const some = (own) => new Proxy(own, { get: (target, key) => (key in target ? target[key] : any) });
 const registered = new Map();
 const opened = [];
+const providers = new Map();
 globalThis.stand = { registered, opened };
 const commands = some({
   registerCommand: (id, run) => (registered.set(id, run), any),
@@ -34,13 +35,15 @@ const window = some({
 });
 const workspace = some({
   textDocuments: [],
-  openTextDocument: async (options) => (opened.push(options.content), options),
+  registerTextDocumentContentProvider: (scheme, provider) => (providers.set(scheme, provider), any),
+  openTextDocument: async (options) => (opened.push(options.content ?? providers.get(options.scheme).provideTextDocumentContent(options)), options),
 });
 const names = ["languages", "Range", "Location", "Hover", "MarkdownString", "CompletionItem",
   "CompletionItemKind", "Diagnostic", "DiagnosticSeverity", "StatusBarAlignment", "WorkspaceEdit",
   "CodeAction", "CodeActionKind", "SnippetString", "EventEmitter", "InlayHint", "CodeLens",
   "SymbolKind", "DocumentSymbol", "SymbolInformation", "ExtensionMode", "Uri"];
-module.exports = { ...Object.fromEntries(names.map((name) => [name, any])), commands, window, workspace };
+const Uri = some({ from: (parts) => ({ ...parts, toString: () => JSON.stringify(parts) }) });
+module.exports = { ...Object.fromEntries(names.map((name) => [name, any])), commands, window, workspace, Uri };
 `;
 
 const project: Record<string, string> = {

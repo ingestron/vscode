@@ -53,9 +53,11 @@ describe("projectTree", () => {
     ]);
   });
 
-  it("lists the eight actions in order, each carrying the project folder", () => {
+  it("lists the ten actions in order, each carrying the project folder", () => {
     const actions = projectTree([retail], uriOf).filter((node) => node.command);
     expect(actions.map((node) => [node.label, node.command?.id])).toEqual([
+      ["Add connection", "ingestron.addConnection"],
+      ["Add flow", "ingestron.addFlow"],
       ["Check", "ingestron.check"],
       ["Plan", "ingestron.plan"],
       ["Apply", "ingestron.apply"],
@@ -105,13 +107,15 @@ describe("projectTree", () => {
   it("leaves out the environments when the project declares none", () => {
     const nodes = projectTree([{ ...retail, environments: [] }]);
     expect(nodes.map((node) => node.label)).not.toContain("Environments");
-    expect(nodes).toHaveLength(8);
+    expect(nodes).toHaveLength(10);
   });
 
   it("one project shows no project level", () => {
     const nodes = projectTree([retail]);
     expect(nodes.map((node) => node.label)).toEqual([
       "Environments",
+      "Add connection",
+      "Add flow",
       "Check",
       "Plan",
       "Apply",
