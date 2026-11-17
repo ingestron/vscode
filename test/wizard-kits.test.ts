@@ -83,49 +83,62 @@ function filesIn(root: string, below = ""): Record<string, string> {
   return found;
 }
 
-it("offers a third start, the published standard", async () => {
+/** The platform a kit is for: the start of its id. */
+const platformOf = (spec: string) => spec.split("/")[0]!;
+
+it("asks where the project runs, with no connection-first start", async () => {
   await state.command!();
   expect(state.menus[0]).toMatchObject([
-    { label: "From a connection" },
-    { label: "From a starter" },
-    {
-      label: "From a published standard",
-      detail: "A dated standard for your platform, with an example project",
-    },
+    { id: "synapse" },
+    { id: "databricks" },
+    { id: "adf-landing" },
+    { id: "duckdb" },
+    { label: "Try a sample project", id: "sample" },
   ]);
 });
 
-it("lists the installed standards by title, with id and version, and the summary", async () => {
-  state.choices = ["From a published standard"];
+it.each(["databricks", "duckdb"])(
+  "lists a new standard, then %s's published standards, then a standard file",
+  async (platform) => {
+    state.choices = [platform];
+    await state.command!();
+    const kits = installedKits().filter((kit) => platformOf(kit.id) === platform);
+    expect(kits.length).toBeGreaterThan(0);
+    expect(state.menus[1]).toMatchObject([
+      { description: "Recommended" },
+      ...kits.map((kit) => ({
+        label: kit.title,
+        description: `${kit.id}@${kit.version}`,
+        detail: `Published standard. ${kit.summary}`,
+      })),
+      { label: "Your team's standard file" },
+    ]);
+  },
+);
+
+it("offers no published standard for a platform that has none", async () => {
+  state.choices = ["synapse"];
   await state.command!();
-  const kits = installedKits();
-  expect(kits.length).toBeGreaterThan(0);
-  expect(state.menus[1]).toMatchObject(
-    kits.map((kit) => ({
-      label: kit.title,
-      description: `${kit.id}@${kit.version}`,
-      detail: kit.summary,
-    })),
-  );
+  expect(state.menus[1]).toHaveLength(2);
 });
 
-it("cancels choosing a published standard without asking for a folder", async () => {
-  state.choices = ["From a published standard"];
+it("cancels choosing a standard without asking for a folder", async () => {
+  state.choices = ["duckdb"];
   await state.command!();
   expect(state.folderAsked).toBe(false);
   expect(existsSync(state.folder)).toBe(false);
 });
 
 it.each(specs)("creates the same files from %s as ingestron init --kit", async (spec) => {
-  state.choices = ["From a published standard", spec];
+  state.choices = [platformOf(spec), spec];
   await state.command!();
   const expected = join(mkdtempSync(join(tmpdir(), "ingestron-kit-")), "project");
-  expect(run(["init", expected, "--kit", spec, "--yes"], { cwd: expected, write: () => {} })).toBe(
-    0,
-  );
+  expect(
+    run(["init", expected, "--kit", spec, "--empty", "--yes"], { cwd: expected, write: () => {} }),
+  ).toBe(0);
   const created = filesIn(state.folder);
   expect(Object.keys(created).length).toBeGreaterThan(3);
   expect(created).toEqual(filesIn(expected));
   expect(state.executed).toEqual(["markdown.showPreview"]);
-  expect(state.messages[0]).toMatch(/^Created the project\./);
+  expect(state.messages[0]).toMatch(/^Created the platform and standard\./);
 });

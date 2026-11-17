@@ -4,6 +4,7 @@ import {
   registerAutoApply,
   registerCommands,
   registerDraftContract,
+  registerDraftMetadata,
   registerFileMoves,
   registerSourceCommands,
   showMarkdown,
@@ -23,7 +24,11 @@ import {
   registerReference,
   registerWalkthrough,
 } from "./vscode/views/index.js";
-import { registerAddAssistantFiles, registerWizard } from "./vscode/wizard/index.js";
+import {
+  registerAddAssistantFiles,
+  registerAddDefinitions,
+  registerWizard,
+} from "./vscode/wizard/index.js";
 
 /** Called by VS Code when a workspace has an Ingestron project, or a command runs. */
 export function activate(context: vscode.ExtensionContext): void {
@@ -43,8 +48,10 @@ export function activate(context: vscode.ExtensionContext): void {
   registerContextKeys(context);
   registerAutoApply(context, state, output, refresh);
   registerWizard(context, output);
+  registerAddDefinitions(context, state);
   registerAddAssistantFiles(context, state, output);
   registerDraftContract(context);
+  registerDraftMetadata(context, state);
   registerImportQueue(context);
   registerSourceCommands(context, state);
   registerSourceWatch(context, state, showMarkdown);

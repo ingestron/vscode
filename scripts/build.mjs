@@ -10,6 +10,7 @@
 import { cpSync, existsSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 import { build } from "esbuild";
 import { thirdPartyNotices } from "./third-party-notices.mjs";
 
@@ -36,10 +37,13 @@ writeFileSync(join(root, "THIRD_PARTY_NOTICES"), thirdPartyNotices(metafile, roo
 // The data folders come from the packages @ingestron/core itself resolves, the
 // same versions the bundle's code comes from, not whatever the extension lists.
 const core = realpathSync(join(root, "node_modules/@ingestron/core"));
+const requireFromCore = createRequire(join(core, "package.json"));
 // Beside core, where a pnpm install puts the packages core depends on.
 const installed = (path) => {
-  const found = join(dirname(core), path);
-  if (!existsSync(found)) throw new Error(`No installed copy of ${path}`);
+  const found = (requireFromCore.resolve.paths("@ingestron/core") ?? [])
+    .map((folder) => join(folder, "@ingestron", path))
+    .find(existsSync);
+  if (!found) throw new Error(`No installed copy of ${path}`);
   return found;
 };
 const notGenerated = (path) => !/\/(build|\.generated\.json)(\/|$)/.test(path);

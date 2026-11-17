@@ -5,3 +5,4 @@ export { registerDraftContract } from "./draft-contract.js";
 export { registerFileMoves } from "./file-moves.js";
 export { registerSourceCommands } from "./source-commands.js";
 export { showMarkdown } from "./markdown.js";
+export { registerDraftMetadata } from "./draft-metadata.js";

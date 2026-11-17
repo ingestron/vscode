@@ -1,8 +1,10 @@
 // The context keys the menus in package.json test: which folders are project
 // folders, and which files are inside one. They change only when files or
-// folders are created, deleted or renamed; an edit changes none of them, so no
-// project is opened or scanned for one. Whether an editor shows a project file
+// folders are created, deleted or renamed, and when a document changes kind.
+// Only headers are classified; no project resolution runs for menu updates. Whether an editor shows a project file
 // is left to the menus, which ask it of each editor with `resourcePath`.
+import { readFile } from "node:fs/promises";
+import { resourcePurposes } from "../../features/resource-purpose.js";
 import { dirname } from "node:path";
 import * as vscode from "vscode";
 import { limits } from "../../features/limits.js";
@@ -35,6 +37,7 @@ export function registerContextKeys(context: vscode.ExtensionContext): void {
     // A project, or a file in one, appears or goes, perhaps under the file that is open now.
     watcher.onDidCreate(outsideBuild),
     watcher.onDidDelete(outsideBuild),
+    watcher.onDidChange(outsideBuild),
     // Renaming, moving or deleting a folder in VS Code changes which files are in a project.
     vscode.workspace.onDidCreateFiles(rescan),
     vscode.workspace.onDidDeleteFiles(rescan),
@@ -71,6 +74,11 @@ async function setProjectKeys(sent: Map<string, string>): Promise<string[]> {
   await setKey(sent, "ingestron.projectFolders", folders);
   await setKey(sent, "ingestron.hasProjects", folders.length > 0);
   await setKey(sent, "ingestron.projectFiles", projectFilesOf(files, folders));
+  const contents = await Promise.all(
+    files.map(async (file) => [file, await readFile(file, "utf8").catch(() => "")] as const),
+  );
+  for (const [key, paths] of Object.entries(resourcePurposes(new Map(contents), folders)))
+    await setKey(sent, `ingestron.${key}`, paths);
   return folders;
 }
 

@@ -35,10 +35,23 @@ export interface ProjectInfo {
   folder: string;
   id: string;
   environments: string[];
+  modes?: Record<string, string | undefined>;
   chosen?: string;
 }
 
 const actions: { id: string; label: string; icon: string; tooltip?: string }[] = [
+  {
+    id: "ingestron.addConnection",
+    label: "Add connection",
+    icon: "plug",
+    tooltip: "Add a source supported by this project’s standard",
+  },
+  {
+    id: "ingestron.addFlow",
+    label: "Add flow",
+    icon: "git-merge",
+    tooltip: "Choose a connection and its source objects",
+  },
   {
     id: "ingestron.check",
     label: "Check",
@@ -142,7 +155,9 @@ function environmentNode(project: ProjectInfo, name: string): TreeNode {
   const selected = name === project.chosen;
   return {
     label: name,
-    ...(selected && { description: "selected" }),
+    description:
+      [selected && "selected", project.modes?.[name]].filter(Boolean).join(" · ") || undefined,
+    tooltip: `Preview environment${project.modes?.[name] ? `; effective mode: ${project.modes[name]}` : ""}. Mode is controlled by the Platform's mode; Compare environments shows its effect.`,
     icon: selected ? "check" : "circle-outline",
     command: { id: "ingestron.selectEnvironment", args: [project.folder, name] },
   };
