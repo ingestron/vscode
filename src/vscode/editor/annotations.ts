@@ -1,7 +1,8 @@
 // Inlay hints and code lenses: what a line resolves to, and the generated
 // files that come from it, for the chosen environment.
-import { basename } from "node:path";
 import * as vscode from "vscode";
+import { type GeneratedLens, tableAtCursor } from "@ingestron/authoring";
+import { metadataDrafts } from "../../features/metadata-contract.js";
 import type { ExtensionState } from "../state/index.js";
 
 const yaml: vscode.DocumentSelector = [{ scheme: "file", pattern: "**/*.{yaml,yml}" }];
@@ -54,21 +55,42 @@ function lenses(state: ExtensionState, document: vscode.TextDocument): vscode.Co
     document.getText(),
     state.environmentOf(here.project),
   );
-  return found.flatMap(({ line, methods, chosen, files }) => {
-    const at = new vscode.Range(line, 0, line, 0);
-    // The methods first, explained on hover; then each generated file, which opens it.
-    const how = new vscode.CodeLens(at, { title: methods, tooltip: chosen, command: "" });
-    return [
-      how,
-      ...files.map(
-        (path) =>
-          new vscode.CodeLens(at, {
-            title: `$(file-code) ${basename(path)}`,
-            tooltip: `Generated: ${path}`,
-            command: "ingestron.openGenerated",
-            arguments: [document.uri, path],
-          }),
-      ),
-    ];
+  if (found.length === 0) return [];
+  const drafts = metadataDrafts(
+    here.project.files,
+    here.file,
+    state.environmentOf(here.project),
+  ).drafts;
+  return found.flatMap((item) => {
+    const offset = document.offsetAt(new vscode.Position(item.line, 0));
+    const table = tableAtCursor(document.getText(), offset);
+    return tableLenses(document.uri, item, table && drafts.has(table) ? table : undefined);
   });
+}
+
+/** Keep the table toolbar bounded; the picker holds full generated paths. */
+function tableLenses(
+  uri: vscode.Uri,
+  { line, files, methods, chosen }: GeneratedLens,
+  table: string | undefined,
+): vscode.CodeLens[] {
+  const at = new vscode.Range(line, 0, line, 0);
+  const preview = new vscode.CodeLens(at, {
+    title: `Generated files (${files.length})`,
+    tooltip: `Preview the files generated for this table; nothing runs or deploys.\n\n${methods}\n${chosen}`,
+    command: "ingestron.showGenerated",
+    arguments: [uri, files],
+  });
+  const draft = table
+    ? [
+        new vscode.CodeLens(at, {
+          title: "Draft contract",
+          tooltip:
+            "Create and link an ODCS draft from this table's imported metadata. Review it before use.",
+          command: "ingestron.draftContractFromMetadata",
+          arguments: [uri, table],
+        }),
+      ]
+    : [];
+  return [preview, ...draft];
 }

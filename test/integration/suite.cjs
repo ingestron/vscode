@@ -603,9 +603,15 @@ async function projectView() {
     before.map((row) => row.label),
     ["dev", "prod"],
   );
-  const selected = (list) => list.filter((row) => row.description === "selected");
-  assert.equal(selected(before).length, 1, "one environment is marked selected");
-  const other = before.find((row) => row.description !== "selected");
+  // The description is "selected", the effective mode, or both: "selected · <mode>".
+  const isSelected = (row) => (row.description ?? "").split(" · ").includes("selected");
+  const selected = (list) => list.filter(isSelected);
+  assert.equal(
+    selected(before).length,
+    1,
+    `one environment is marked selected: ${before.map((row) => row.description).join()}`,
+  );
+  const other = before.find((row) => !isSelected(row));
   await vscode.commands.executeCommand(other.command.id, ...other.command.args);
   assert.deepEqual(
     selected(await environments()).map((row) => row.label),
@@ -613,6 +619,8 @@ async function projectView() {
   );
   const actions = (await rows()).filter((row) => row.command).map((row) => row.label);
   assert.deepEqual(actions, [
+    "Add connection",
+    "Add flow",
     "Check",
     "Plan",
     "Apply",
@@ -666,12 +674,15 @@ async function projectViewFollows(folder, flow) {
         return rows.length === 2 && JSON.stringify(states(rows)) === JSON.stringify(expected);
       }, what),
     );
-  // The second project's environments, as the rows show them: the name marked "selected".
+  // The second project's environments, as the rows show them: the name marked
+  // "selected" (alone, or before the effective mode: "selected · <mode>").
   const selectedIn = async () => {
     const rows = await vscode.commands.executeCommand("ingestron.projectRows");
     const project = rows.find((row) => row.description === "second");
     const list = project.children.find((row) => row.label === "Environments").children;
-    return list.filter((row) => row.description === "selected").map((row) => row.label);
+    return list
+      .filter((row) => (row.description ?? "").split(" · ").includes("selected"))
+      .map((row) => row.label);
   };
   let outsideFolder;
   const first = { ".": open, second: folded };
@@ -753,7 +764,10 @@ async function previewEnvironment(folder, source, devPreview) {
   await choosing("dev", () => vscode.commands.executeCommand("ingestron.selectEnvironment"));
 }
 
-/** The table's full name beside it, and a lens per generated file that opens it. */
+/**
+ * The table's full name beside it, and one lens for the table's generated
+ * files: the methods on hover, and a single file opens straight away.
+ */
 async function annotations(flow, document) {
   const hints = await until(async () => {
     const found = await vscode.commands.executeCommand(
@@ -766,9 +780,15 @@ async function annotations(flow, document) {
   const labels = hints.map((hint) => (typeof hint.label === "string" ? hint.label : ""));
   assert.ok(labels.includes("→ dev_sales.bronze.orders"), labels.join());
   const lenses = await vscode.commands.executeCommand("vscode.executeCodeLensProvider", flow);
-  assert.ok(lenses.some((item) => item.command?.title === "files → streaming-table"));
-  const lens = lenses.find((item) => item.command?.title.endsWith("orders.sql"));
-  assert.ok(lens, "no lens for orders.sql");
+  const titles = lenses.map((item) => item.command?.title).join(" | ");
+  const lens = lenses.find((item) => item.command?.title === "Generated files (1)");
+  assert.ok(lens, `no "Generated files (1)" lens: ${titles}`);
+  assert.ok(lens.command.tooltip?.includes("files → streaming-table"), lens.command.tooltip);
+  const [, paths] = lens.command.arguments;
+  assert.ok(
+    paths.length === 1 && paths[0].endsWith("orders.sql"),
+    `the lens's files: ${paths.join()}`,
+  );
   await vscode.commands.executeCommand(lens.command.command, ...lens.command.arguments);
   await until(
     () => vscode.window.activeTextEditor?.document.uri.path.endsWith("orders.sql"),

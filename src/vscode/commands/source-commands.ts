@@ -49,8 +49,9 @@ function connectionsOf(project: ProjectSnapshot): string[] {
 async function requestSourceMetadata(state: ExtensionState, uri?: vscode.Uri): Promise<void> {
   const here = state.hereFor(uri);
   if (!here) return void vscode.window.showWarningMessage("Open a file of an Ingestron project.");
-  const choices = requestChoices(connectionsOf(here.project));
-  let connection: string | undefined;
+  const ids = connectionsOf(here.project);
+  const choices = requestChoices(ids);
+  let connection: string | undefined = ids.length === 1 ? ids[0] : undefined;
   if (choices) {
     const chosen = await vscode.window.showQuickPick(choices, {
       placeHolder: "The connection to ask about",
@@ -58,7 +59,10 @@ async function requestSourceMetadata(state: ExtensionState, uri?: vscode.Uri): P
     if (!chosen) return;
     connection = chosen.connection;
   }
-  await showMarkdown(here.project.sourceRequest(state.environmentHere(here), connection));
+  await showMarkdown(
+    here.project.sourceRequest(state.environmentHere(here), connection),
+    here.project.folder,
+  );
 }
 
 /**
@@ -186,7 +190,8 @@ async function finish(
   folder: string,
   name: string,
 ): Promise<void> {
+  const show = (content: string) => showMarkdown(content, folder);
   if ("refused" in result)
-    return reportRefusal(name, refusalNotice(result.refused), result.refused, showMarkdown);
-  await reportImport(result, name, folder, showMarkdown);
+    return reportRefusal(name, refusalNotice(result.refused), result.refused, show);
+  await reportImport(result, name, folder, show);
 }

@@ -56,7 +56,13 @@ function definition(
   position: vscode.Position,
 ): vscode.Location | undefined {
   const here = state.projectAt(document.uri);
-  const place = here && here.project.definitionAt(here.file, document.offsetAt(position));
+  const place =
+    here &&
+    here.project.definitionAt(
+      here.file,
+      document.offsetAt(position),
+      state.environmentOf(here.project),
+    );
   return (
     here &&
     place &&
@@ -149,7 +155,11 @@ function complete(
       // A value with dots or slashes, such as ERP.dbo.Customers, replaces all of what is typed:
       // the editor's word before the cursor would stop at the first dot.
       else if (suggestion.replaceFrom !== undefined)
-        item.range = new vscode.Range(document.positionAt(suggestion.replaceFrom), position);
+        item.range = new vscode.Range(
+          document.positionAt(suggestion.replaceFrom),
+          // Inside `${…}`, the rest of the name after the cursor is replaced too.
+          suggestion.replaceTo === undefined ? position : document.positionAt(suggestion.replaceTo),
+        );
       // Keep the order given: the likely choice first, the ones that cannot be used last.
       item.sortText = String(index).padStart(4, "0");
       if (suggestion.preselect) item.preselect = true;

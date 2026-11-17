@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
 const root = join(import.meta.dirname, "..");
 
 // A stand-in for VS Code: it records the commands registered and the quick picks shown, picks
-// "From a published standard", then the DuckDB kit, and gives the folder in TARGET.
+// DuckDB as the target, then its published standard, and gives the folder in TARGET.
 const stub = `
 const any = new Proxy(function () {}, {
   get: (_target, key) => (key === "then" ? undefined : key === Symbol.toPrimitive ? () => "" : any),
@@ -36,7 +36,7 @@ const window = some({
     const list = await items;
     picks.push(list.map(({ label, description }) => ({ label, description })));
     return picks.length === 1
-      ? list.find((item) => item.id === "kit")
+      ? list.find((item) => item.id === "duckdb")
       : list.find((item) => item.description === "duckdb/local-medallion@2026-11-10");
   },
   showOpenDialog: async () => [{ fsPath: process.env.TARGET }],
@@ -106,8 +106,9 @@ describe("bundle and published standards", () => {
       written: string;
     };
     expect(picks[1]!.map((item) => item.description)).toEqual([
-      "databricks/lakehouse-streaming@2026-11-10",
+      "Recommended",
       "duckdb/local-medallion@2026-11-10",
+      undefined,
     ]);
     for (const file of ["project.yaml", "standard.yaml", "STANDARD.md", "README.md", ".gitignore"])
       expect(existsSync(join(target, file)), `${file}\n${written}`).toBe(true);
